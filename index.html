@@ -3,96 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vision Guide AI - Prototype</title>
+    <title>Vision Guide AI - Full Prototype</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; background: #121212; color: white; }
-        #video-container { position: relative; display: inline-block; margin-top: 20px; }
-        video { border: 5px solid #00ff00; border-radius: 10px; width: 90%; max-width: 600px; }
-        .btn-mic { background: #ff4b2b; color: white; padding: 20px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px; margin-top: 20px; }
-        #status { font-size: 1.2rem; color: #00ff00; margin-top: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: white; text-align: center; margin: 0; padding: 20px; }
+        #video-container { position: relative; margin: 20px auto; width: fit-content; border: 4px solid #3498db; border-radius: 15px; overflow: hidden; background: #000; }
+        video { width: 100%; max-width: 500px; display: block; }
+        canvas { position: absolute; top: 0; left: 0; }
+        .controls { margin-top: 20px; }
+        .btn-mic { background: #e74c3c; color: white; padding: 25px; border-radius: 50%; border: none; cursor: pointer; font-size: 24px; transition: 0.3s; box-shadow: 0 0 15px rgba(231, 76, 60, 0.5); }
+        .btn-mic:active { transform: scale(0.9); background: #c0392b; }
+        #status { font-size: 1.2rem; color: #2ecc71; margin-top: 15px; font-weight: bold; min-height: 1.5em; }
+        .info { color: #bbb; font-size: 0.9rem; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <h1>Vision Guide AI Prototype</h1>
-    <p>Voice-based Navigation & Object Detection</p>
+    <h1>Vision Guide AI</h1>
+    <div id="status">Initializing Camera...</div>
 
     <div id="video-container">
         <video id="webcam" autoplay muted></video>
+        <canvas id="overlay"></canvas>
     </div>
 
-    <br>
-    <button class="btn-mic" onclick="startVoice()">🎤 Tap to Speak</button>
-    <div id="status">System Ready...</div>
+    <div class="controls">
+        <button class="btn-mic" id="micBtn">🎤</button>
+        <p class="info">Tap the Mic and say "Hospital", "Hello", or "Where am I?"</p>
+    </div>
 
     <script>
         const video = document.getElementById('webcam');
+        const canvas = document.getElementById('overlay');
         const statusText = document.getElementById('status');
+        const micBtn = document.getElementById('micBtn');
         let model;
 
-        // 1. Setup Webcam
-        async function setupWebcam() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
-        }
-
-        // 2. Load AI Model (Object Detection)
-        async function loadModel() {
-            statusText.innerText = "Loading AI Models...";
-            model = await cocoSsd.load();
-            statusText.innerText = "AI Models Loaded! Detecting...";
-            detectObjects();
-        }
-
-        // 3. Detect Objects & Speak Alerts
-        async function detectObjects() {
-            const predictions = await model.detect(video);
-            predictions.forEach(prediction => {
-                if (prediction.score > 0.6) { // 60% confidence
-                    console.log(prediction.class);
-                    // If object is very close (simple logic)
-                    if(prediction.class === 'person' || prediction.class === 'chair') {
-                        speak(`Alert: ${prediction.class} detected ahead`);
-                    }
-                }
-            });
-            setTimeout(detectObjects, 3000); // Check every 3 seconds to avoid noise
-        }
-
-        // 4. Voice Assistant Logic
-        function startVoice() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'en-US';
-            statusText.innerText = "Listening...";
-
-            recognition.onresult = (event) => {
-                const command = event.results[0][0].transcript.toLowerCase();
-                statusText.innerText = "You said: " + command;
-                handleCommand(command);
-            };
-            recognition.start();
-        }
-
-        function handleCommand(cmd) {
-            if (cmd.includes('hospital')) {
-                speak("Searching for nearby hospitals. Please walk straight for 200 meters.");
-            } else if (cmd.includes('where am i')) {
-                speak("You are currently at Main Road, Coimbatore.");
-            } else {
-                speak("I heard you, but I am still learning that command.");
-            }
-        }
-
+        // 1. Audio Speech Function
         function speak(text) {
+            window.speechSynthesis.cancel(); // Stop any current speech
             const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 1.0;
             window.speechSynthesis.speak(utterance);
         }
 
-        // Start everything
-        setupWebcam();
-        loadModel();
+        // 2. Setup Camera
+        async function setupCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+                video.srcObject = stream;
+                return new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        resolve();
+                    };
+                });
+            } catch (err) {
+                statusText.innerText = "Error: Camera Access Denied!";
+                console.error(err);
+            }
+        }
+
+        // 3. Object Detection Loop
+        async function detectFrame() {
+            const predictions = await model.detect(video);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            predictions.forEach(prediction => {
+                if (prediction.score > 0.6) {
+                    // Draw box
+                    ctx.strokeStyle = "#00FF00";
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(...prediction.bbox);
+                    
+                    // Simple logic for voice alert (only if object is large/close)
+                    const area = prediction.bbox[2] * prediction.bbox[3];
+                    if (area > (canvas.width * canvas.height / 4)) {
+                        speak(`Caution: ${prediction.class} in front of you`);
+                    }
+                }
+            });
+            requestAnimationFrame(detectFrame);
+        }
+
+        // 4. Voice Recognition (The "Listening" part)
+        function startListening() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Your browser does not support Speech Recognition.");
+                return;
+            }
+
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            
+            recognition.onstart = () => {
+                statusText.innerText = "Listening...";
+                statusText.style.color = "#e74c3c";
+            };
+
+            recognition.onspeechend = () => {
+                recognition.stop();
+                statusText.style.color = "#2ecc71";
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                statusText.innerText = "I heard: " + transcript;
+                processCommand(transcript);
+            };
+
+            recognition.onerror = (err) => {
+                statusText.innerText = "Error in listening...";
+                console.error(err);
+            };
+
+            recognition.start();
+        }
+
+        function processCommand(cmd) {
+            if (cmd.includes('hospital')) {
+                speak("Searching for the nearest hospital. Walk straight for 300 meters and turn left.");
+            } else if (cmd.includes('hello') || cmd.includes('hi')) {
+                speak("Hello! I am your vision assistant. I am monitoring your surroundings.");
+            } else if (cmd.includes('where am i')) {
+                speak("You are currently on the main road. Traffic is moving normally.");
+            } else {
+                speak("I heard " + cmd + ". I am not sure how to help with that yet.");
+            }
+        }
+
+        // Initialize Everything
+        async function init() {
+            await setupCamera();
+            statusText.innerText = "Loading AI Model...";
+            model = await cocoSsd.load();
+            statusText.innerText = "System Ready! Tap Mic to talk.";
+            speak("System initialized. I am ready to guide you.");
+            
+            micBtn.addEventListener('click', startListening);
+            detectFrame();
+        }
+
+        init();
     </script>
 </body>
 </html>
