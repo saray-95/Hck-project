@@ -1,225 +1,98 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>AI Smart Glass</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
-<script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
-
-<style>
-body{
-  margin:0;
-  background:#0A0A0A;
-  color:white;
-  font-family:Arial;
-}
-
-.screen{display:none;padding:20px;}
-.screen.active{display:block;}
-
-.feature{
-  padding:15px;
-  background:#111827;
-  margin:10px 0;
-  border-radius:15px;
-  cursor:pointer;
-}
-
-video{
-  width:100%;
-  border-radius:15px;
-  margin-top:10px;
-}
-
-canvas{
-  position:absolute;
-  top:0;
-  left:0;
-}
-
-#map{
-  width:100%;
-  height:300px;
-  border-radius:15px;
-  margin-top:10px;
-}
-
-.mic{
-  position:fixed;
-  top:15px;
-  right:15px;
-  width:60px;
-  height:60px;
-  border-radius:50%;
-  background:#22d3ee;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:28px;
-}
-
-.mic.active{
-  animation:pulse .4s infinite alternate;
-}
-
-@keyframes pulse{
-  from{box-shadow:0 0 10px #22d3ee;}
-  to{box-shadow:0 0 40px #22d3ee;}
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Guide AI - Prototype</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #121212; color: white; }
+        #video-container { position: relative; display: inline-block; margin-top: 20px; }
+        video { border: 5px solid #00ff00; border-radius: 10px; width: 90%; max-width: 600px; }
+        .btn-mic { background: #ff4b2b; color: white; padding: 20px; border-radius: 50%; border: none; cursor: pointer; font-size: 20px; margin-top: 20px; }
+        #status { font-size: 1.2rem; color: #00ff00; margin-top: 10px; }
+    </style>
 </head>
-
 <body>
 
-<div class="mic" id="mic">🎤</div>
+    <h1>Vision Guide AI Prototype</h1>
+    <p>Voice-based Navigation & Object Detection</p>
 
-<!-- HOME -->
-<div id="home" class="screen active">
-  <h2>Smart Glass</h2>
-  <div class="feature" onclick="openScreen('face')">Face Detection</div>
-  <div class="feature" onclick="openScreen('object')">Object Detection</div>
-  <div class="feature" onclick="openScreen('currency')">Currency Detection</div>
-  <div class="feature" onclick="openScreen('nav')">Navigation</div>
-</div>
+    <div id="video-container">
+        <video id="webcam" autoplay muted></video>
+    </div>
 
-<!-- FACE -->
-<div id="face" class="screen">
-  <h2>Face Detection</h2>
-  <video id="faceVideo" autoplay></video>
-</div>
+    <br>
+    <button class="btn-mic" onclick="startVoice()">🎤 Tap to Speak</button>
+    <div id="status">System Ready...</div>
 
-<!-- OBJECT -->
-<div id="object" class="screen">
-  <h2>Object Detection</h2>
-  <video id="objectVideo" autoplay></video>
-</div>
+    <script>
+        const video = document.getElementById('webcam');
+        const statusText = document.getElementById('status');
+        let model;
 
-<!-- CURRENCY -->
-<div id="currency" class="screen">
-  <h2>Currency Detection</h2>
-  <video id="currencyVideo" autoplay></video>
-</div>
+        // 1. Setup Webcam
+        async function setupWebcam() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+        }
 
-<!-- NAVIGATION -->
-<div id="nav" class="screen">
-  <h2>Navigation</h2>
-  <iframe
-    id="map"
-    src="https://www.google.com/maps/embed/v1/directions?key=YOUR_GOOGLE_MAPS_API_KEY&origin=Chennai&destination=Shop"
-    allowfullscreen>
-  </iframe>
-</div>
+        // 2. Load AI Model (Object Detection)
+        async function loadModel() {
+            statusText.innerText = "Loading AI Models...";
+            model = await cocoSsd.load();
+            statusText.innerText = "AI Models Loaded! Detecting...";
+            detectObjects();
+        }
 
-<script>
-let stream;
-let model;
-const mic=document.getElementById("mic");
+        // 3. Detect Objects & Speak Alerts
+        async function detectObjects() {
+            const predictions = await model.detect(video);
+            predictions.forEach(prediction => {
+                if (prediction.score > 0.6) { // 60% confidence
+                    console.log(prediction.class);
+                    // If object is very close (simple logic)
+                    if(prediction.class === 'person' || prediction.class === 'chair') {
+                        speak(`Alert: ${prediction.class} detected ahead`);
+                    }
+                }
+            });
+            setTimeout(detectObjects, 3000); // Check every 3 seconds to avoid noise
+        }
 
-function speak(text){
-  const speech=new SpeechSynthesisUtterance(text);
-  speechSynthesis.speak(speech);
-}
+        // 4. Voice Assistant Logic
+        function startVoice() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            statusText.innerText = "Listening...";
 
-function openScreen(id){
-  stopCamera();
-  document.querySelectorAll(".screen")
-    .forEach(s=>s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
+            recognition.onresult = (event) => {
+                const command = event.results[0][0].transcript.toLowerCase();
+                statusText.innerText = "You said: " + command;
+                handleCommand(command);
+            };
+            recognition.start();
+        }
 
-  if(id==="face") startFace();
-  if(id==="object") startObject();
-  if(id==="currency") startCurrency();
-}
+        function handleCommand(cmd) {
+            if (cmd.includes('hospital')) {
+                speak("Searching for nearby hospitals. Please walk straight for 200 meters.");
+            } else if (cmd.includes('where am i')) {
+                speak("You are currently at Main Road, Coimbatore.");
+            } else {
+                speak("I heard you, but I am still learning that command.");
+            }
+        }
 
-async function startCamera(videoId){
-  stream=await navigator.mediaDevices.getUserMedia({video:true});
-  document.getElementById(videoId).srcObject=stream;
-}
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utterance);
+        }
 
-function stopCamera(){
-  if(stream){
-    stream.getTracks().forEach(t=>t.stop());
-  }
-}
-
-/* OBJECT DETECTION */
-async function startObject(){
-  await startCamera("objectVideo");
-  model=await cocoSsd.load();
-  detectObjects();
-}
-
-async function detectObjects(){
-  const video=document.getElementById("objectVideo");
-  const predictions=await model.detect(video);
-  if(predictions.length>0){
-    speak("I see "+predictions[0].class);
-  }
-  requestAnimationFrame(detectObjects);
-}
-
-/* FACE DETECTION */
-async function startFace(){
-  await startCamera("faceVideo");
-  await faceapi.nets.tinyFaceDetector.loadFromUri(
-    "https://cdn.jsdelivr.net/npm/face-api.js/weights"
-  );
-  detectFace();
-}
-
-async function detectFace(){
-  const video=document.getElementById("faceVideo");
-  const detection=await faceapi.detectAllFaces(
-    video,new faceapi.TinyFaceDetectorOptions()
-  );
-  if(detection.length>0){
-    speak("Face detected");
-  }
-  requestAnimationFrame(detectFace);
-}
-
-/* CURRENCY (Using object model) */
-async function startCurrency(){
-  await startCamera("currencyVideo");
-  model=await cocoSsd.load();
-  detectCurrency();
-}
-
-async function detectCurrency(){
-  const video=document.getElementById("currencyVideo");
-  const predictions=await model.detect(video);
-  if(predictions.length>0){
-    speak("Detected "+predictions[0].class);
-  }
-  requestAnimationFrame(detectCurrency);
-}
-
-/* VOICE CONTROL */
-const SpeechRecognition =
-window.SpeechRecognition || window.webkitSpeechRecognition;
-
-if(SpeechRecognition){
-  const recognition=new SpeechRecognition();
-  recognition.continuous=true;
-  recognition.onresult=function(e){
-    const text=e.results[e.results.length-1][0]
-    .transcript.toLowerCase();
-
-    mic.classList.add("active");
-    setTimeout(()=>mic.classList.remove("active"),300);
-
-    if(text.includes("home")) openScreen("home");
-    if(text.includes("face")) openScreen("face");
-    if(text.includes("object")) openScreen("object");
-    if(text.includes("currency")) openScreen("currency");
-    if(text.includes("navigation")) openScreen("nav");
-  };
-  recognition.start();
-}
-</script>
-
+        // Start everything
+        setupWebcam();
+        loadModel();
+    </script>
 </body>
 </html>
