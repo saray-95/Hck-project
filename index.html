@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Smart Glass – GOD MODE</title>
+
+<!-- TensorFlow -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+
+<!-- Map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<style>
+body{
+  margin:0;
+  background:#050505;
+  font-family:Arial;
+  color:#00f7ff;
+  display:flex;
+  justify-content:center;
+}
+.phone{
+  width:400px;
+  height:830px;
+  background:linear-gradient(180deg,#0A0A0A,#111);
+  border-radius:30px;
+  padding:15px;
+  box-shadow:0 0 40px rgba(0,255,255,0.15);
+  overflow:auto;
+}
+h2{ text-align:center; }
+
+button{
+  background:linear-gradient(45deg,#00eaff,#0077ff);
+  border:none;
+  padding:10px 18px;
+  border-radius:20px;
+  margin:6px 0;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+button:hover{
+  box-shadow:0 0 15px #00f7ff;
+}
+
+video{
+  width:100%;
+  border-radius:15px;
+}
+
+#map{
+  height:200px;
+  border-radius:15px;
+  margin-top:10px;
+}
+
+.hud{
+  position:absolute;
+  top:10px;
+  left:10px;
+  font-size:12px;
+  color:#00ffcc;
+}
+
+.progress{
+  height:6px;
+  background:#222;
+  border-radius:10px;
+}
+.bar{
+  height:100%;
+  width:0%;
+  background:#00f7ff;
+}
+</style>
+</head>
+
+<body>
+<div class="phone">
+
+<h2>AI Smart Glass – GOD MODE</h2>
+
+<button onclick="enableVoice()">🎤 Enable Voice</button>
+<button onclick="startNav()">🧭 Start Navigation</button>
+<button onclick="startAIScan()">👁 Continuous AI Scan</button>
+<button onclick="sendSOS()">🚨 Emergency</button>
+
+<p id="status"></p>
+
+<div class="progress"><div class="bar" id="navBar"></div></div>
+<p id="direction"></p>
+
+<video id="video" autoplay muted></video>
+
+<div id="map"></div>
+
+</div>
+
+<script>
+
+let objectModel;
+let faceModel;
+let scanning=false;
+let stepLength=0.7;
+let navSteps=0;
+
+/* TTS */
+function speak(text){
+  let msg = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(msg);
+}
+
+/* VOICE WAKE SYSTEM */
+function enableVoice(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SpeechRecognition();
+  rec.continuous=true;
+  rec.start();
+
+  rec.onresult = e=>{
+    let cmd = e.results[e.results.length-1][0].transcript.toLowerCase();
+    if(cmd.includes("start navigation")) startNav();
+    if(cmd.includes("scan")) startAIScan();
+    if(cmd.includes("emergency")) sendSOS();
+  };
+}
+
+/* GPS + MAP */
+let map, marker;
+
+navigator.geolocation.watchPosition(pos=>{
+  let lat=pos.coords.latitude;
+  let lon=pos.coords.longitude;
+
+  if(!map){
+    map = L.map('map').setView([lat,lon],16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    marker = L.marker([lat,lon]).addTo(map);
+  } else {
+    marker.setLatLng([lat,lon]);
+    map.setView([lat,lon]);
+  }
+});
+
+/* NAVIGATION */
+function startNav(){
+  navSteps=0;
+  let totalDistance=60;
+  let totalSteps=Math.floor(totalDistance/stepLength);
+
+  speak("Navigation started");
+
+  let interval=setInterval(()=>{
+    navSteps++;
+    let remain=totalSteps-navSteps;
+
+    document.getElementById("direction").innerText=
+      "Crossing in "+remain+" steps";
+
+    document.getElementById("navBar").style.width=
+      (navSteps/totalSteps*100)+"%";
+
+    if(navSteps>=totalSteps){
+      speak("Turn right now");
+      clearInterval(interval);
+    }
+  },800);
+}
+
+/* CAMERA */
+navigator.mediaDevices.getUserMedia({video:true})
+.then(stream=>{
+  document.getElementById("video").srcObject=stream;
+});
+
+/* LOAD MODELS */
+async function loadModels(){
+  objectModel=await cocoSsd.load();
+  faceModel=await blazeface.load();
+}
+loadModels();
+
+/* CONTINUOUS AI SCAN */
+async function startAIScan(){
+  scanning=true;
+  speak("AI scanning started");
+
+  const video=document.getElementById("video");
+
+  while(scanning){
+    const objects=await objectModel.detect(video);
+    const faces=await faceModel.estimateFaces(video,false);
+
+    if(objects.length>0){
+      let obj=objects[0];
+      let distanceEstimate=Math.round(1000/obj.bbox[2]); 
+      document.getElementById("status").innerText=
+        obj.class+" detected approx "+distanceEstimate+" cm away";
+      speak(obj.class+" ahead");
+    }
+
+    if(faces.length>0){
+      speak("Person detected");
+    }
+
+    await new Promise(r=>setTimeout(r,4000));
+  }
+}
+
+/* EMERGENCY */
+function sendSOS(){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    let lat=pos.coords.latitude;
+    let lon=pos.coords.longitude;
+    let link="https://maps.google.com/?q="+lat+","+lon;
+    speak("Emergency message sent");
+    document.getElementById("status").innerText=
+      "SOS SENT\n"+link;
+  });
+}
+
+</script>
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AI Smart Glass – GOD MODE</title>
+
+<!-- TensorFlow -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+
+<!-- Map -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<style>
+body{
+  margin:0;
+  background:#050505;
+  font-family:Arial;
+  color:#00f7ff;
+  display:flex;
+  justify-content:center;
+}
+.phone{
+  width:400px;
+  height:830px;
+  background:linear-gradient(180deg,#0A0A0A,#111);
+  border-radius:30px;
+  padding:15px;
+  box-shadow:0 0 40px rgba(0,255,255,0.15);
+  overflow:auto;
+}
+h2{ text-align:center; }
+
+button{
+  background:linear-gradient(45deg,#00eaff,#0077ff);
+  border:none;
+  padding:10px 18px;
+  border-radius:20px;
+  margin:6px 0;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+button:hover{
+  box-shadow:0 0 15px #00f7ff;
+}
+
+video{
+  width:100%;
+  border-radius:15px;
+}
+
+#map{
+  height:200px;
+  border-radius:15px;
+  margin-top:10px;
+}
+
+.hud{
+  position:absolute;
+  top:10px;
+  left:10px;
+  font-size:12px;
+  color:#00ffcc;
+}
+
+.progress{
+  height:6px;
+  background:#222;
+  border-radius:10px;
+}
+.bar{
+  height:100%;
+  width:0%;
+  background:#00f7ff;
+}
+</style>
+</head>
+
+<body>
+<div class="phone">
+
+<h2>AI Smart Glass – GOD MODE</h2>
+
+<button onclick="enableVoice()">🎤 Enable Voice</button>
+<button onclick="startNav()">🧭 Start Navigation</button>
+<button onclick="startAIScan()">👁 Continuous AI Scan</button>
+<button onclick="sendSOS()">🚨 Emergency</button>
+
+<p id="status"></p>
+
+<div class="progress"><div class="bar" id="navBar"></div></div>
+<p id="direction"></p>
+
+<video id="video" autoplay muted></video>
+
+<div id="map"></div>
+
+</div>
+
+<script>
+
+let objectModel;
+let faceModel;
+let scanning=false;
+let stepLength=0.7;
+let navSteps=0;
+
+/* TTS */
+function speak(text){
+  let msg = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(msg);
+}
+
+/* VOICE WAKE SYSTEM */
+function enableVoice(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SpeechRecognition();
+  rec.continuous=true;
+  rec.start();
+
+  rec.onresult = e=>{
+    let cmd = e.results[e.results.length-1][0].transcript.toLowerCase();
+    if(cmd.includes("start navigation")) startNav();
+    if(cmd.includes("scan")) startAIScan();
+    if(cmd.includes("emergency")) sendSOS();
+  };
+}
+
+/* GPS + MAP */
+let map, marker;
+
+navigator.geolocation.watchPosition(pos=>{
+  let lat=pos.coords.latitude;
+  let lon=pos.coords.longitude;
+
+  if(!map){
+    map = L.map('map').setView([lat,lon],16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    marker = L.marker([lat,lon]).addTo(map);
+  } else {
+    marker.setLatLng([lat,lon]);
+    map.setView([lat,lon]);
+  }
+});
+
+/* NAVIGATION */
+function startNav(){
+  navSteps=0;
+  let totalDistance=60;
+  let totalSteps=Math.floor(totalDistance/stepLength);
+
+  speak("Navigation started");
+
+  let interval=setInterval(()=>{
+    navSteps++;
+    let remain=totalSteps-navSteps;
+
+    document.getElementById("direction").innerText=
+      "Crossing in "+remain+" steps";
+
+    document.getElementById("navBar").style.width=
+      (navSteps/totalSteps*100)+"%";
+
+    if(navSteps>=totalSteps){
+      speak("Turn right now");
+      clearInterval(interval);
+    }
+  },800);
+}
+
+/* CAMERA */
+navigator.mediaDevices.getUserMedia({video:true})
+.then(stream=>{
+  document.getElementById("video").srcObject=stream;
+});
+
+/* LOAD MODELS */
+async function loadModels(){
+  objectModel=await cocoSsd.load();
+  faceModel=await blazeface.load();
+}
+loadModels();
+
+/* CONTINUOUS AI SCAN */
+async function startAIScan(){
+  scanning=true;
+  speak("AI scanning started");
+
+  const video=document.getElementById("video");
+
+  while(scanning){
+    const objects=await objectModel.detect(video);
+    const faces=await faceModel.estimateFaces(video,false);
+
+    if(objects.length>0){
+      let obj=objects[0];
+      let distanceEstimate=Math.round(1000/obj.bbox[2]); 
+      document.getElementById("status").innerText=
+        obj.class+" detected approx "+distanceEstimate+" cm away";
+      speak(obj.class+" ahead");
+    }
+
+    if(faces.length>0){
+      speak("Person detected");
+    }
+
+    await new Promise(r=>setTimeout(r,4000));
+  }
+}
+
+/* EMERGENCY */
+function sendSOS(){
+  navigator.geolocation.getCurrentPosition(pos=>{
+    let lat=pos.coords.latitude;
+    let lon=pos.coords.longitude;
+    let link="https://maps.google.com/?q="+lat+","+lon;
+    speak("Emergency message sent");
+    document.getElementById("status").innerText=
+      "SOS SENT\n"+link;
+  });
+}
+
+</script>
+</body>
+</html>
