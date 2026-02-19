@@ -133,10 +133,46 @@ video{
   border-radius:20px;
   margin-top:15px;
 }
+
+/* MIC ICON */
+.mic-indicator{
+  position:fixed;
+  top:20px;
+  right:20px;
+  width:60px;
+  height:60px;
+  border-radius:50%;
+  background:#1f2933;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:28px;
+  transition:all .3s ease;
+  box-shadow:0 0 10px rgba(0,0,0,.5);
+  z-index:1000;
+}
+
+.mic-indicator.active{
+  background:#22d3ee;
+  box-shadow:0 0 25px #22d3ee;
+  color:black;
+}
+
+.mic-indicator.listening{
+  animation:pulse 1s infinite;
+}
+
+@keyframes pulse{
+  0%{transform:scale(1)}
+  50%{transform:scale(1.2)}
+  100%{transform:scale(1)}
+}
 </style>
 </head>
 
 <body>
+
+<div class="mic-indicator" id="micIcon">🎤</div>
 
 <!-- HOME -->
 <div class="screen active" id="home">
@@ -165,7 +201,7 @@ video{
 
   <div class="card">
     <strong>Instruction</strong>
-    <p id="navText">Say "home" or "sos"</p>
+    <p>Say "home" or "sos"</p>
 
     <div class="steps">
       <div class="step"></div>
@@ -175,11 +211,6 @@ video{
       <div class="step"></div>
       <div class="step"></div>
     </div>
-  </div>
-
-  <div class="card">
-    🦶 Zebra crossing ahead  
-    <br>🚗 Vehicle detected nearby
   </div>
 </div>
 
@@ -203,14 +234,13 @@ video{
 
 <script>
 
-// Screen switch
 function go(id){
   document.querySelectorAll('.screen')
     .forEach(s=>s.classList.remove('active'))
   document.getElementById(id).classList.add('active')
 }
 
-// CAMERA
+/* CAMERA */
 function startCamera(){
   navigator.mediaDevices.getUserMedia({video:true})
   .then(stream=>{
@@ -221,7 +251,7 @@ function startCamera(){
   });
 }
 
-// SOS with location
+/* SOS */
 function sendSOS(){
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(pos=>{
@@ -236,9 +266,9 @@ function sendSOS(){
   }
 }
 
-// STEP ANIMATION
+/* STEP ANIMATION */
 let stepIndex = 0;
-function animateSteps(){
+setInterval(()=>{
   const steps = document.querySelectorAll(".step");
   if(stepIndex < steps.length){
     steps[stepIndex].classList.add("active");
@@ -247,11 +277,11 @@ function animateSteps(){
     stepIndex = 0;
     steps.forEach(s=>s.classList.remove("active"));
   }
-}
-setInterval(animateSteps,2000);
+},2000);
 
-// VOICE CONTROL
+/* VOICE CONTROL */
 let recognition;
+let micIcon = document.getElementById("micIcon");
 
 function startVoice(){
   const SpeechRecognition =
@@ -266,11 +296,19 @@ function startVoice(){
   recognition.continuous = true;
   recognition.lang = "en-US";
 
+  recognition.onstart = function(){
+    micIcon.classList.add("active");
+  };
+
   recognition.onresult = function(event){
+    micIcon.classList.add("listening");
+
+    setTimeout(()=>{
+      micIcon.classList.remove("listening");
+    },500);
+
     const text = event.results[event.results.length-1][0]
     .transcript.toLowerCase().trim();
-
-    console.log("You said:", text);
 
     if(text.includes("home")){
       go("home");
