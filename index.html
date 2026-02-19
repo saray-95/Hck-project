@@ -1,340 +1,224 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>AI Smart Glass App</title>
+<title>AI Smart Glass</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+<script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+
 <style>
-:root{
-  --bg:#0A0A0A;
-  --card:#111827;
-  --accent:#22d3ee;
-  --danger:#ef4444;
-  --text:#e5e7eb;
-}
-
-*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
-
 body{
   margin:0;
-  background:var(--bg);
-  color:var(--text);
+  background:#0A0A0A;
+  color:white;
+  font-family:Arial;
 }
 
-.screen{
-  display:none;
-  padding:20px;
-  min-height:100vh;
-}
-
-.screen.active{display:block}
-
-h1,h2{margin:0 0 16px}
-
-.card{
-  background:linear-gradient(145deg,#0f172a,#020617);
-  border-radius:20px;
-  padding:18px;
-  margin-bottom:16px;
-  box-shadow:0 0 20px rgba(34,211,238,0.15);
-}
-
-.button{
-  background:var(--accent);
-  color:#000;
-  padding:16px;
-  text-align:center;
-  border-radius:999px;
-  font-weight:bold;
-  cursor:pointer;
-  margin:10px 0;
-}
-
-.grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:12px;
-}
+.screen{display:none;padding:20px;}
+.screen.active{display:block;}
 
 .feature{
-  padding:14px;
-  border-radius:16px;
-  background:#020617;
-  border:1px solid rgba(34,211,238,.3);
+  padding:15px;
+  background:#111827;
+  margin:10px 0;
+  border-radius:15px;
   cursor:pointer;
-}
-
-.feature:hover{
-  box-shadow:0 0 15px rgba(34,211,238,.5);
-}
-
-.navbar{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
-  background:#020617;
-  display:flex;
-  justify-content:space-around;
-  padding:10px 0;
-}
-
-.navbar div{
-  cursor:pointer;
-  font-size:14px;
-}
-
-.map{
-  height:220px;
-  border-radius:20px;
-  background:
-    radial-gradient(circle at center,rgba(34,211,238,.15),transparent 60%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255,255,255,.04) 0,
-      rgba(255,255,255,.04) 1px,
-      transparent 1px,
-      transparent 30px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255,255,255,.04) 0,
-      rgba(255,255,255,.04) 1px,
-      transparent 1px,
-      transparent 30px
-    );
-}
-
-.steps{
-  display:flex;
-  gap:6px;
-  margin-top:10px;
-}
-
-.step{
-  width:18px;
-  height:18px;
-  border-radius:50%;
-  background:#1f2933;
-}
-
-.step.active{
-  background:var(--accent);
-}
-
-.sos{
-  background:var(--danger);
-  color:white;
 }
 
 video{
   width:100%;
-  border-radius:20px;
-  margin-top:15px;
+  border-radius:15px;
+  margin-top:10px;
 }
 
-/* MIC ICON */
-.mic-indicator{
+canvas{
+  position:absolute;
+  top:0;
+  left:0;
+}
+
+#map{
+  width:100%;
+  height:300px;
+  border-radius:15px;
+  margin-top:10px;
+}
+
+.mic{
   position:fixed;
-  top:20px;
-  right:20px;
+  top:15px;
+  right:15px;
   width:60px;
   height:60px;
   border-radius:50%;
-  background:#1f2933;
+  background:#22d3ee;
   display:flex;
   align-items:center;
   justify-content:center;
   font-size:28px;
-  transition:all .3s ease;
-  box-shadow:0 0 10px rgba(0,0,0,.5);
-  z-index:1000;
 }
 
-.mic-indicator.active{
-  background:#22d3ee;
-  box-shadow:0 0 25px #22d3ee;
-  color:black;
-}
-
-.mic-indicator.listening{
-  animation:pulse 1s infinite;
+.mic.active{
+  animation:pulse .4s infinite alternate;
 }
 
 @keyframes pulse{
-  0%{transform:scale(1)}
-  50%{transform:scale(1.2)}
-  100%{transform:scale(1)}
+  from{box-shadow:0 0 10px #22d3ee;}
+  to{box-shadow:0 0 40px #22d3ee;}
 }
 </style>
 </head>
 
 <body>
 
-<div class="mic-indicator" id="micIcon">🎤</div>
+<div class="mic" id="mic">🎤</div>
 
 <!-- HOME -->
-<div class="screen active" id="home">
-  <h1>Smart Glass</h1>
+<div id="home" class="screen active">
+  <h2>Smart Glass</h2>
+  <div class="feature" onclick="openScreen('face')">Face Detection</div>
+  <div class="feature" onclick="openScreen('object')">Object Detection</div>
+  <div class="feature" onclick="openScreen('currency')">Currency Detection</div>
+  <div class="feature" onclick="openScreen('nav')">Navigation</div>
+</div>
 
-  <div class="card">
-    <div class="button" onclick="go('nav')">Start Navigation</div>
-    <div class="button" onclick="startVoice()">Start Voice Control</div>
-  </div>
+<!-- FACE -->
+<div id="face" class="screen">
+  <h2>Face Detection</h2>
+  <video id="faceVideo" autoplay></video>
+</div>
 
-  <div class="grid">
-    <div class="feature" onclick="startCamera()">👁 Object</div>
-    <div class="feature" onclick="alert('Face Recognition Demo')">👤 Face</div>
-    <div class="feature" onclick="alert('Currency Detection Demo')">💵 Currency</div>
-    <div class="feature" onclick="go('sos')">🚨 SOS</div>
-  </div>
+<!-- OBJECT -->
+<div id="object" class="screen">
+  <h2>Object Detection</h2>
+  <video id="objectVideo" autoplay></video>
+</div>
 
-  <video id="camera" autoplay playsinline></video>
+<!-- CURRENCY -->
+<div id="currency" class="screen">
+  <h2>Currency Detection</h2>
+  <video id="currencyVideo" autoplay></video>
 </div>
 
 <!-- NAVIGATION -->
-<div class="screen" id="nav">
+<div id="nav" class="screen">
   <h2>Navigation</h2>
-
-  <div class="map"></div>
-
-  <div class="card">
-    <strong>Instruction</strong>
-    <p>Say "home" or "sos"</p>
-
-    <div class="steps">
-      <div class="step"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-    </div>
-  </div>
-</div>
-
-<!-- SOS -->
-<div class="screen" id="sos">
-  <h2>Emergency</h2>
-
-  <div class="card">
-    <div class="button sos" onclick="sendSOS()">
-      SEND SOS
-    </div>
-    <p>Live location shared</p>
-  </div>
-</div>
-
-<div class="navbar">
-  <div onclick="go('home')">Home</div>
-  <div onclick="go('nav')">Navigate</div>
-  <div onclick="go('sos')">SOS</div>
+  <iframe
+    id="map"
+    src="https://www.google.com/maps/embed/v1/directions?key=YOUR_GOOGLE_MAPS_API_KEY&origin=Chennai&destination=Shop"
+    allowfullscreen>
+  </iframe>
 </div>
 
 <script>
+let stream;
+let model;
+const mic=document.getElementById("mic");
 
-function go(id){
-  document.querySelectorAll('.screen')
-    .forEach(s=>s.classList.remove('active'))
-  document.getElementById(id).classList.add('active')
+function speak(text){
+  const speech=new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(speech);
 }
 
-/* CAMERA */
-function startCamera(){
-  navigator.mediaDevices.getUserMedia({video:true})
-  .then(stream=>{
-    document.getElementById("camera").srcObject = stream;
-  })
-  .catch(()=>{
-    alert("Camera permission denied");
-  });
+function openScreen(id){
+  stopCamera();
+  document.querySelectorAll(".screen")
+    .forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  if(id==="face") startFace();
+  if(id==="object") startObject();
+  if(id==="currency") startCurrency();
 }
 
-/* SOS */
-function sendSOS(){
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(pos=>{
-      const link =
-      "https://maps.google.com/?q=" +
-      pos.coords.latitude + "," + pos.coords.longitude;
+async function startCamera(videoId){
+  stream=await navigator.mediaDevices.getUserMedia({video:true});
+  document.getElementById(videoId).srcObject=stream;
+}
 
-      alert("SOS Sent!\nLocation:\n" + link);
-    });
-  }else{
-    alert("Location not supported");
+function stopCamera(){
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
   }
 }
 
-/* STEP ANIMATION */
-let stepIndex = 0;
-setInterval(()=>{
-  const steps = document.querySelectorAll(".step");
-  if(stepIndex < steps.length){
-    steps[stepIndex].classList.add("active");
-    stepIndex++;
-  }else{
-    stepIndex = 0;
-    steps.forEach(s=>s.classList.remove("active"));
+/* OBJECT DETECTION */
+async function startObject(){
+  await startCamera("objectVideo");
+  model=await cocoSsd.load();
+  detectObjects();
+}
+
+async function detectObjects(){
+  const video=document.getElementById("objectVideo");
+  const predictions=await model.detect(video);
+  if(predictions.length>0){
+    speak("I see "+predictions[0].class);
   }
-},2000);
+  requestAnimationFrame(detectObjects);
+}
+
+/* FACE DETECTION */
+async function startFace(){
+  await startCamera("faceVideo");
+  await faceapi.nets.tinyFaceDetector.loadFromUri(
+    "https://cdn.jsdelivr.net/npm/face-api.js/weights"
+  );
+  detectFace();
+}
+
+async function detectFace(){
+  const video=document.getElementById("faceVideo");
+  const detection=await faceapi.detectAllFaces(
+    video,new faceapi.TinyFaceDetectorOptions()
+  );
+  if(detection.length>0){
+    speak("Face detected");
+  }
+  requestAnimationFrame(detectFace);
+}
+
+/* CURRENCY (Using object model) */
+async function startCurrency(){
+  await startCamera("currencyVideo");
+  model=await cocoSsd.load();
+  detectCurrency();
+}
+
+async function detectCurrency(){
+  const video=document.getElementById("currencyVideo");
+  const predictions=await model.detect(video);
+  if(predictions.length>0){
+    speak("Detected "+predictions[0].class);
+  }
+  requestAnimationFrame(detectCurrency);
+}
 
 /* VOICE CONTROL */
-let recognition;
-let micIcon = document.getElementById("micIcon");
+const SpeechRecognition =
+window.SpeechRecognition || window.webkitSpeechRecognition;
 
-function startVoice(){
-  const SpeechRecognition =
-  window.SpeechRecognition || window.webkitSpeechRecognition;
+if(SpeechRecognition){
+  const recognition=new SpeechRecognition();
+  recognition.continuous=true;
+  recognition.onresult=function(e){
+    const text=e.results[e.results.length-1][0]
+    .transcript.toLowerCase();
 
-  if(!SpeechRecognition){
-    alert("Voice not supported in this browser");
-    return;
-  }
+    mic.classList.add("active");
+    setTimeout(()=>mic.classList.remove("active"),300);
 
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.lang = "en-US";
-
-  recognition.onstart = function(){
-    micIcon.classList.add("active");
+    if(text.includes("home")) openScreen("home");
+    if(text.includes("face")) openScreen("face");
+    if(text.includes("object")) openScreen("object");
+    if(text.includes("currency")) openScreen("currency");
+    if(text.includes("navigation")) openScreen("nav");
   };
-
-  recognition.onresult = function(event){
-    micIcon.classList.add("listening");
-
-    setTimeout(()=>{
-      micIcon.classList.remove("listening");
-    },500);
-
-    const text = event.results[event.results.length-1][0]
-    .transcript.toLowerCase().trim();
-
-    if(text.includes("home")){
-      go("home");
-    }
-
-    if(text.includes("navigation")){
-      go("nav");
-    }
-
-    if(text.includes("sos")){
-      go("sos");
-      sendSOS();
-    }
-
-    if(text.includes("camera")){
-      startCamera();
-    }
-  };
-
-  recognition.onend = function(){
-    recognition.start();
-  };
-
   recognition.start();
 }
-
 </script>
 
 </body>
