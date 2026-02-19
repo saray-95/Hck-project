@@ -6,173 +6,128 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-:root {
-  --bg: #0a0a0a;
-  --card: rgba(255,255,255,0.05);
-  --accent: #00eaff;
-  --text: #ffffff;
-  --muted: #aaaaaa;
+:root{
+  --bg:#0A0A0A;
+  --card:#111827;
+  --accent:#22d3ee;
+  --danger:#ef4444;
+  --text:#e5e7eb;
 }
 
-* { box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
+*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
 
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
 }
 
-/* ---------- COMMON ---------- */
-.screen {
-  display: none;
-  padding: 20px;
-  min-height: 100vh;
+.screen{
+  display:none;
+  padding:20px;
+  min-height:100vh;
 }
 
-.screen.active {
-  display: block;
+.screen.active{display:block}
+
+h1,h2{margin:0 0 16px}
+
+.card{
+  background:linear-gradient(145deg,#0f172a,#020617);
+  border-radius:20px;
+  padding:18px;
+  margin-bottom:16px;
+  box-shadow:0 0 20px rgba(34,211,238,0.15);
 }
 
-.card {
-  background: var(--card);
-  border-radius: 20px;
-  padding: 20px;
-  margin-bottom: 16px;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 0 25px rgba(0,234,255,0.08);
+.button{
+  background:var(--accent);
+  color:#000;
+  padding:16px;
+  text-align:center;
+  border-radius:999px;
+  font-weight:bold;
+  cursor:pointer;
+  margin:10px 0;
 }
 
-button {
-  background: var(--accent);
-  color: #000;
-  border: none;
-  border-radius: 50px;
-  padding: 14px 20px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
 }
 
-button.glow {
-  box-shadow: 0 0 25px var(--accent);
+.feature{
+  padding:14px;
+  border-radius:16px;
+  background:#020617;
+  border:1px solid rgba(34,211,238,.3);
+  cursor:pointer;
 }
 
-.navbar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #111;
-  display: flex;
-  justify-content: space-around;
-  padding: 12px 0;
+.feature:hover{
+  box-shadow:0 0 15px rgba(34,211,238,.5);
 }
 
-.navbar div {
-  color: var(--muted);
-  cursor: pointer;
+.navbar{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:#020617;
+  display:flex;
+  justify-content:space-around;
+  padding:10px 0;
 }
 
-.navbar div.active {
-  color: var(--accent);
+.navbar div{
+  cursor:pointer;
+  font-size:14px;
 }
 
-/* ---------- HOME ---------- */
-.home-title {
-  font-size: 26px;
-  font-weight: 700;
-  margin-bottom: 20px;
-}
-
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(2,1fr);
-  gap: 14px;
-}
-
-.feature {
-  background: var(--card);
-  padding: 18px;
-  border-radius: 18px;
-  text-align: center;
-  transition: 0.3s;
-}
-
-.feature:hover {
-  box-shadow: 0 0 20px rgba(0,234,255,0.2);
-}
-
-/* ---------- NAVIGATION ---------- */
-.map {
-  height: 280px;
-  border-radius: 20px;
+/* Navigation map */
+.map{
+  height:220px;
+  border-radius:20px;
   background:
-    radial-gradient(circle at center, rgba(0,234,255,0.15), transparent 60%),
+    radial-gradient(circle at center,rgba(34,211,238,.15),transparent 60%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,.04) 0,
+      rgba(255,255,255,.04) 1px,
+      transparent 1px,
+      transparent 30px
+    ),
     repeating-linear-gradient(
       0deg,
-      rgba(255,255,255,0.05) 0,
-      rgba(255,255,255,0.05) 1px,
+      rgba(255,255,255,.04) 0,
+      rgba(255,255,255,.04) 1px,
       transparent 1px,
-      transparent 40px
+      transparent 30px
     );
-  position: relative;
-  margin-bottom: 20px;
 }
 
-.user-dot {
-  width: 14px;
-  height: 14px;
-  background: var(--accent);
-  border-radius: 50%;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  box-shadow: 0 0 20px var(--accent);
+.steps{
+  display:flex;
+  gap:6px;
+  margin-top:10px;
 }
 
-.steps {
-  font-size: 22px;
-  font-weight: bold;
+.step{
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  background:#1f2933;
 }
 
-/* ---------- AI VISION ---------- */
-.scan {
-  height: 200px;
-  border-radius: 20px;
-  background: linear-gradient(180deg,#111,#000);
-  position: relative;
-  overflow: hidden;
+.step.active{
+  background:var(--accent);
 }
 
-.scan::after {
-  content: "";
-  position: absolute;
-  top: -100%;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    rgba(0,234,255,0.3),
-    transparent
-  );
-  animation: scan 3s infinite;
-}
-
-@keyframes scan {
-  to { top: 100%; }
-}
-
-/* ---------- SOS ---------- */
-.sos {
-  background: red;
-  color: white;
-  font-size: 20px;
-  width: 100%;
-  padding: 18px;
-  border-radius: 60px;
-  box-shadow: 0 0 30px red;
+/* SOS */
+.sos{
+  background:var(--danger);
+  color:white;
 }
 </style>
 </head>
@@ -181,69 +136,69 @@ button.glow {
 
 <!-- HOME -->
 <div class="screen active" id="home">
-  <div class="home-title">Smart Glass Dashboard</div>
-
-  <button class="glow" onclick="openScreen('nav')">Start Navigation</button>
+  <h1>Smart Glass</h1>
 
   <div class="card">
-    Battery: 82% • GPS Connected • Camera Active
+    <div class="button" onclick="go('nav')">Start Navigation</div>
   </div>
 
-  <div class="feature-grid">
-    <div class="feature" onclick="openScreen('vision')">👁 AI Vision</div>
-    <div class="feature">💵 Currency</div>
-    <div class="feature">🙂 Face ID</div>
-    <div class="feature" onclick="openScreen('sos')">🚨 SOS</div>
+  <div class="grid">
+    <div class="feature" onclick="alert('Currency Detection')">💵 Currency</div>
+    <div class="feature" onclick="alert('Face Recognition')">👤 Face</div>
+    <div class="feature" onclick="alert('Object Detection')">👁 Object</div>
+    <div class="feature" onclick="go('sos')">🚨 SOS</div>
   </div>
 </div>
 
 <!-- NAVIGATION -->
 <div class="screen" id="nav">
-  <div class="map">
-    <div class="user-dot"></div>
+  <h2>Navigation</h2>
+
+  <div class="map"></div>
+
+  <div class="card">
+    <strong>Instruction</strong>
+    <p>Walk forward for 12 steps</p>
+
+    <div class="steps">
+      <div class="step active"></div>
+      <div class="step active"></div>
+      <div class="step active"></div>
+      <div class="step"></div>
+      <div class="step"></div>
+      <div class="step"></div>
+    </div>
   </div>
 
   <div class="card">
-    <div class="steps">➡️ Turn right after 8 steps</div>
-    <div style="color:var(--muted)">Zebra crossing in 15 steps</div>
-  </div>
-
-  <button class="glow">🎤 Voice Command</button>
-</div>
-
-<!-- AI VISION -->
-<div class="screen" id="vision">
-  <div class="scan"></div>
-
-  <div class="card">
-    Detected: <b>500 Rupees</b><br>
-    Person: <b>Arun</b>
+    🦶 Zebra crossing in 15 steps  
+    <br>🚗 Vehicle approaching from left
   </div>
 </div>
 
 <!-- SOS -->
 <div class="screen" id="sos">
-  <div class="card">
-    Emergency Alert
-  </div>
+  <h2>Emergency</h2>
 
-  <button class="sos">SEND SOS</button>
+  <div class="card">
+    <div class="button sos" onclick="alert('SOS Sent to Family')">
+      SEND SOS
+    </div>
+    <p>Live location shared</p>
+  </div>
 </div>
 
-<!-- NAV BAR -->
 <div class="navbar">
-  <div class="active" onclick="openScreen('home')">Home</div>
-  <div onclick="openScreen('nav')">Nav</div>
-  <div onclick="openScreen('vision')">Vision</div>
-  <div onclick="openScreen('sos')">SOS</div>
+  <div onclick="go('home')">Home</div>
+  <div onclick="go('nav')">Navigate</div>
+  <div onclick="go('sos')">SOS</div>
 </div>
 
 <script>
-function openScreen(id) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-
-  document.querySelectorAll(".navbar div").forEach(n => n.classList.remove("active"));
+function go(id){
+  document.querySelectorAll('.screen')
+    .forEach(s=>s.classList.remove('active'))
+  document.getElementById(id).classList.add('active')
 }
 </script>
 
