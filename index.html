@@ -1,133 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>AI Smart Glass App</title>
+<title>AI Smart Glass</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-:root{
-  --bg:#0A0A0A;
-  --card:#111827;
-  --accent:#22d3ee;
-  --danger:#ef4444;
-  --text:#e5e7eb;
-}
-
-*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
-
 body{
   margin:0;
-  background:var(--bg);
-  color:var(--text);
+  background:#0A0A0A;
+  color:white;
+  font-family:Arial;
 }
 
-.screen{
-  display:none;
-  padding:20px;
-  min-height:100vh;
-}
-
+.screen{display:none;padding:20px}
 .screen.active{display:block}
 
-h1,h2{margin:0 0 16px}
-
-.card{
-  background:linear-gradient(145deg,#0f172a,#020617);
-  border-radius:20px;
-  padding:18px;
-  margin-bottom:16px;
-  box-shadow:0 0 20px rgba(34,211,238,0.15);
-}
-
 .button{
-  background:var(--accent);
-  color:#000;
-  padding:16px;
+  background:#22d3ee;
+  padding:15px;
+  border-radius:50px;
   text-align:center;
-  border-radius:999px;
+  margin:10px 0;
   font-weight:bold;
   cursor:pointer;
-  margin:10px 0;
+  color:black;
 }
 
-.grid{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:12px;
-}
+.sos{background:#ef4444;color:white}
 
-.feature{
-  padding:14px;
-  border-radius:16px;
-  background:#020617;
-  border:1px solid rgba(34,211,238,.3);
-  cursor:pointer;
-}
-
-.feature:hover{
-  box-shadow:0 0 15px rgba(34,211,238,.5);
+video{
+  width:100%;
+  border-radius:20px;
+  margin-top:10px;
 }
 
 .navbar{
   position:fixed;
   bottom:0;
-  left:0;
-  right:0;
-  background:#020617;
+  width:100%;
   display:flex;
   justify-content:space-around;
-  padding:10px 0;
-}
-
-.navbar div{
-  cursor:pointer;
-  font-size:14px;
-}
-
-/* Navigation map */
-.map{
-  height:220px;
-  border-radius:20px;
-  background:
-    radial-gradient(circle at center,rgba(34,211,238,.15),transparent 60%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255,255,255,.04) 0,
-      rgba(255,255,255,.04) 1px,
-      transparent 1px,
-      transparent 30px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255,255,255,.04) 0,
-      rgba(255,255,255,.04) 1px,
-      transparent 1px,
-      transparent 30px
-    );
-}
-
-.steps{
-  display:flex;
-  gap:6px;
-  margin-top:10px;
-}
-
-.step{
-  width:18px;
-  height:18px;
-  border-radius:50%;
-  background:#1f2933;
-}
-
-.step.active{
-  background:var(--accent);
-}
-
-/* SOS */
-.sos{
-  background:var(--danger);
-  color:white;
+  background:#111;
+  padding:10px;
 }
 </style>
 </head>
@@ -136,70 +51,97 @@ h1,h2{margin:0 0 16px}
 
 <!-- HOME -->
 <div class="screen active" id="home">
-  <h1>Smart Glass</h1>
-
-  <div class="card">
-    <div class="button" onclick="go('nav')">Start Navigation</div>
-  </div>
-
-  <div class="grid">
-    <div class="feature" onclick="alert('Currency Detection')">💵 Currency</div>
-    <div class="feature" onclick="alert('Face Recognition')">👤 Face</div>
-    <div class="feature" onclick="alert('Object Detection')">👁 Object</div>
-    <div class="feature" onclick="go('sos')">🚨 SOS</div>
-  </div>
+  <h2>Smart Glass</h2>
+  <div class="button" onclick="go('nav')">Start Navigation</div>
+  <div class="button" onclick="startCamera()">Start Camera</div>
+  <div class="button sos" onclick="sendSOS()">Send SOS</div>
 </div>
 
-<!-- NAVIGATION -->
+<!-- NAV -->
 <div class="screen" id="nav">
   <h2>Navigation</h2>
-
-  <div class="map"></div>
-
-  <div class="card">
-    <strong>Instruction</strong>
-    <p>Walk forward for 12 steps</p>
-
-    <div class="steps">
-      <div class="step active"></div>
-      <div class="step active"></div>
-      <div class="step active"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-    </div>
-  </div>
-
-  <div class="card">
-    🦶 Zebra crossing in 15 steps  
-    <br>🚗 Vehicle approaching from left
-  </div>
-</div>
-
-<!-- SOS -->
-<div class="screen" id="sos">
-  <h2>Emergency</h2>
-
-  <div class="card">
-    <div class="button sos" onclick="alert('SOS Sent to Family')">
-      SEND SOS
-    </div>
-    <p>Live location shared</p>
-  </div>
+  <p id="navText">Say "home" or "sos"</p>
 </div>
 
 <div class="navbar">
   <div onclick="go('home')">Home</div>
-  <div onclick="go('nav')">Navigate</div>
-  <div onclick="go('sos')">SOS</div>
+  <div onclick="go('nav')">Nav</div>
 </div>
 
+<video id="camera" autoplay playsinline></video>
+
 <script>
+
+// Screen switch
 function go(id){
-  document.querySelectorAll('.screen')
-    .forEach(s=>s.classList.remove('active'))
-  document.getElementById(id).classList.add('active')
+  document.querySelectorAll(".screen")
+    .forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
 }
+
+// CAMERA
+function startCamera(){
+  navigator.mediaDevices.getUserMedia({video:true})
+  .then(stream=>{
+    document.getElementById("camera").srcObject = stream;
+  })
+  .catch(()=>{
+    alert("Camera permission denied");
+  });
+}
+
+// SOS with location
+function sendSOS(){
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(pos=>{
+      const link = 
+      "https://maps.google.com/?q=" +
+      pos.coords.latitude + "," + pos.coords.longitude;
+
+      alert("SOS Sent!\nLocation:\n" + link);
+    });
+  }else{
+    alert("Location not supported");
+  }
+}
+
+// VOICE CONTROL
+const SpeechRecognition =
+window.SpeechRecognition || window.webkitSpeechRecognition;
+
+if(SpeechRecognition){
+  const recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.lang = "en-US";
+
+  recognition.onresult = function(event){
+    const text = event.results[event.results.length-1][0]
+    .transcript.toLowerCase();
+
+    console.log(text);
+
+    if(text.includes("navigation")){
+      go("nav");
+    }
+
+    if(text.includes("home")){
+      go("home");
+    }
+
+    if(text.includes("sos")){
+      sendSOS();
+    }
+
+    if(text.includes("camera")){
+      startCamera();
+    }
+  };
+
+  recognition.start();
+}else{
+  alert("Voice recognition not supported in this browser");
+}
+
 </script>
 
 </body>
