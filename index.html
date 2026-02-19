@@ -77,70 +77,72 @@ h1,h2{margin:0 0 16px}
 }
 
 /* MIC ICON */
-.mic-indicator{
+.mic{
   position:fixed;
-  top:20px;
-  right:20px;
+  top:15px;
+  right:15px;
   width:60px;
   height:60px;
   border-radius:50%;
-  background:#1f2933;
+  background:var(--accent);
   display:flex;
   align-items:center;
   justify-content:center;
   font-size:28px;
+  box-shadow:0 0 20px rgba(34,211,238,.5);
   transition:.2s;
-  z-index:1000;
 }
 
-.mic-indicator.active{
-  background:#22d3ee;
-  box-shadow:0 0 25px #22d3ee;
-  color:black;
+.mic.listening{
+  animation:blink .5s infinite alternate;
 }
 
-.mic-indicator.listening{
-  transform:scale(1.2);
+@keyframes blink{
+  from{box-shadow:0 0 10px var(--accent);}
+  to{box-shadow:0 0 40px var(--accent);}
 }
 
 video{
   width:100%;
   border-radius:20px;
-  margin-top:15px;
+  margin-top:10px;
 }
 </style>
 </head>
 
 <body>
 
-<div class="mic-indicator" id="micIcon">🎤</div>
+<div class="mic" id="mic">🎤</div>
 
 <!-- HOME -->
 <div class="screen active" id="home">
   <h1>Smart Glass</h1>
-
-  <div class="card">
-    <div class="button" onclick="go('nav')">Start Navigation</div>
-    <div class="button" onclick="startVoice()">Start Voice Control</div>
-  </div>
-
   <div class="grid">
-    <div class="feature" onclick="openFeature('object')">👁 Object</div>
-    <div class="feature" onclick="openFeature('face')">👤 Face</div>
     <div class="feature" onclick="openFeature('currency')">💵 Currency</div>
+    <div class="feature" onclick="openFeature('face')">👤 Face</div>
+    <div class="feature" onclick="openFeature('object')">👁 Object</div>
     <div class="feature" onclick="go('sos')">🚨 SOS</div>
   </div>
 </div>
 
-<!-- NAV -->
+<!-- NAVIGATION -->
 <div class="screen" id="nav">
   <h2>Navigation</h2>
-  <div class="card">Walk forward carefully</div>
+  <div class="card">Walk forward 12 steps</div>
+</div>
+
+<!-- SOS -->
+<div class="screen" id="sos">
+  <h2>Emergency</h2>
+  <div class="card">
+    <div class="button" style="background:red;color:white"
+     onclick="alert('SOS Sent')">SEND SOS</div>
+  </div>
 </div>
 
 <!-- FACE -->
 <div class="screen" id="face">
-  <h2>Face Detection</h2>
+  <h2>Face Recognition</h2>
   <video id="faceCam" autoplay playsinline></video>
 </div>
 
@@ -156,12 +158,6 @@ video{
   <video id="currencyCam" autoplay playsinline></video>
 </div>
 
-<!-- SOS -->
-<div class="screen" id="sos">
-  <h2>Emergency</h2>
-  <div class="button" style="background:#ef4444;color:white" onclick="sendSOS()">SEND SOS</div>
-</div>
-
 <div class="navbar">
   <div onclick="go('home')">Home</div>
   <div onclick="go('nav')">Navigate</div>
@@ -169,93 +165,56 @@ video{
 </div>
 
 <script>
+let currentStream = null;
+const micIcon = document.getElementById("mic");
 
 /* SCREEN SWITCH */
 function go(id){
-  stopAllCameras();
+  stopCamera();
   document.querySelectorAll('.screen')
-    .forEach(s=>s.classList.remove('active'))
-  document.getElementById(id).classList.add('active')
+    .forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
 }
 
-/* FEATURE OPEN */
+/* OPEN FEATURE + CAMERA */
 function openFeature(type){
   go(type);
   startCamera(type+"Cam");
 }
 
-/* CAMERA CONTROL */
-let currentStream;
-
-function startCamera(videoId){
-  stopAllCameras();
-  navigator.mediaDevices.getUserMedia({video:true})
-  .then(stream=>{
-    currentStream = stream;
-    document.getElementById(videoId).srcObject = stream;
-  });
+/* CAMERA */
+async function startCamera(videoId){
+  stopCamera();
+  try{
+    currentStream = await navigator.mediaDevices.getUserMedia({video:true});
+    document.getElementById(videoId).srcObject = currentStream;
+  }catch(e){
+    alert("Camera permission denied");
+  }
 }
 
-function stopAllCameras(){
+function stopCamera(){
   if(currentStream){
     currentStream.getTracks().forEach(track=>track.stop());
   }
 }
 
-/* SOS */
-function sendSOS(){
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(pos=>{
-      alert("SOS Sent!\nLocation:\nhttps://maps.google.com/?q=" 
-      + pos.coords.latitude + "," + pos.coords.longitude);
-    });
-  }
-}
-
-/* 🎤 MIC + VOICE COMMAND */
-let micIcon = document.getElementById("micIcon");
-
-function startVoice(){
-
-  navigator.mediaDevices.getUserMedia({audio:true})
-  .then(stream=>{
-
-    micIcon.classList.add("active");
-
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const analyser = audioContext.createAnalyser();
-    const microphone = audioContext.createMediaStreamSource(stream);
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-    microphone.connect(analyser);
-
-    function detectSound(){
-      analyser.getByteFrequencyData(dataArray);
-      let volume = dataArray.reduce((a,b)=>a+b) / dataArray.length;
-
-      if(volume > 40){
-        micIcon.classList.add("listening");
-      } else {
-        micIcon.classList.remove("listening");
-      }
-
-      requestAnimationFrame(detectSound);
-    }
-    detectSound();
-
-  });
-
-  /* SPEECH RECOGNITION */
-  const SpeechRecognition =
+/* VOICE SYSTEM */
+const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  if(!SpeechRecognition) return;
-
+if(SpeechRecognition){
   const recognition = new SpeechRecognition();
+  recognition.continuous = true;
   recognition.lang = "en-US";
 
   recognition.onresult = function(event){
-    const text = event.results[0][0].transcript.toLowerCase();
+    const text =
+      event.results[event.results.length-1][0].transcript.toLowerCase();
+    console.log(text);
+
+    micIcon.classList.add("listening");
+    setTimeout(()=>micIcon.classList.remove("listening"),300);
 
     if(text.includes("home")) go("home");
     if(text.includes("navigation")) go("nav");
@@ -266,8 +225,9 @@ function startVoice(){
   };
 
   recognition.start();
+}else{
+  alert("Speech Recognition not supported. Use Chrome.");
 }
-
 </script>
 
 </body>
