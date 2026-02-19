@@ -147,7 +147,7 @@ video{
   align-items:center;
   justify-content:center;
   font-size:28px;
-  transition:all .3s ease;
+  transition:all .2s ease;
   box-shadow:0 0 10px rgba(0,0,0,.5);
   z-index:1000;
 }
@@ -159,13 +159,7 @@ video{
 }
 
 .mic-indicator.listening{
-  animation:pulse 1s infinite;
-}
-
-@keyframes pulse{
-  0%{transform:scale(1)}
-  50%{transform:scale(1.2)}
-  100%{transform:scale(1)}
+  transform:scale(1.2);
 }
 </style>
 </head>
@@ -185,8 +179,8 @@ video{
 
   <div class="grid">
     <div class="feature" onclick="startCamera()">👁 Object</div>
-    <div class="feature" onclick="alert('Face Recognition Demo')">👤 Face</div>
-    <div class="feature" onclick="alert('Currency Detection Demo')">💵 Currency</div>
+    <div class="feature">👤 Face</div>
+    <div class="feature">💵 Currency</div>
     <div class="feature" onclick="go('sos')">🚨 SOS</div>
   </div>
 
@@ -201,7 +195,7 @@ video{
 
   <div class="card">
     <strong>Instruction</strong>
-    <p>Say "home" or "sos"</p>
+    <p>Walk forward carefully</p>
 
     <div class="steps">
       <div class="step"></div>
@@ -234,6 +228,7 @@ video{
 
 <script>
 
+/* SCREEN SWITCH */
 function go(id){
   document.querySelectorAll('.screen')
     .forEach(s=>s.classList.remove('active'))
@@ -261,8 +256,6 @@ function sendSOS(){
 
       alert("SOS Sent!\nLocation:\n" + link);
     });
-  }else{
-    alert("Location not supported");
   }
 }
 
@@ -279,60 +272,43 @@ setInterval(()=>{
   }
 },2000);
 
-/* VOICE CONTROL */
-let recognition;
+/* 🎤 MIC SOUND DETECTION */
 let micIcon = document.getElementById("micIcon");
 
 function startVoice(){
-  const SpeechRecognition =
-  window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  if(!SpeechRecognition){
-    alert("Voice not supported in this browser");
-    return;
-  }
+  navigator.mediaDevices.getUserMedia({audio:true})
+  .then(stream=>{
 
-  recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.lang = "en-US";
-
-  recognition.onstart = function(){
     micIcon.classList.add("active");
-  };
 
-  recognition.onresult = function(event){
-    micIcon.classList.add("listening");
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = audioContext.createAnalyser();
+    const microphone = audioContext.createMediaStreamSource(stream);
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-    setTimeout(()=>{
-      micIcon.classList.remove("listening");
-    },500);
+    microphone.connect(analyser);
 
-    const text = event.results[event.results.length-1][0]
-    .transcript.toLowerCase().trim();
+    function detectSound(){
+      analyser.getByteFrequencyData(dataArray);
 
-    if(text.includes("home")){
-      go("home");
+      let volume = dataArray.reduce((a,b)=>a+b) / dataArray.length;
+
+      if(volume > 40){
+        micIcon.classList.add("listening");
+      } else {
+        micIcon.classList.remove("listening");
+      }
+
+      requestAnimationFrame(detectSound);
     }
 
-    if(text.includes("navigation")){
-      go("nav");
-    }
+    detectSound();
 
-    if(text.includes("sos")){
-      go("sos");
-      sendSOS();
-    }
-
-    if(text.includes("camera")){
-      startCamera();
-    }
-  };
-
-  recognition.onend = function(){
-    recognition.start();
-  };
-
-  recognition.start();
+  })
+  .catch(()=>{
+    alert("Mic permission denied");
+  });
 }
 
 </script>
