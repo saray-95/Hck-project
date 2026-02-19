@@ -65,10 +65,6 @@ h1,h2{margin:0 0 16px}
   cursor:pointer;
 }
 
-.feature:hover{
-  box-shadow:0 0 15px rgba(34,211,238,.5);
-}
-
 .navbar{
   position:fixed;
   bottom:0;
@@ -78,60 +74,6 @@ h1,h2{margin:0 0 16px}
   display:flex;
   justify-content:space-around;
   padding:10px 0;
-}
-
-.navbar div{
-  cursor:pointer;
-  font-size:14px;
-}
-
-.map{
-  height:220px;
-  border-radius:20px;
-  background:
-    radial-gradient(circle at center,rgba(34,211,238,.15),transparent 60%),
-    repeating-linear-gradient(
-      90deg,
-      rgba(255,255,255,.04) 0,
-      rgba(255,255,255,.04) 1px,
-      transparent 1px,
-      transparent 30px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(255,255,255,.04) 0,
-      rgba(255,255,255,.04) 1px,
-      transparent 1px,
-      transparent 30px
-    );
-}
-
-.steps{
-  display:flex;
-  gap:6px;
-  margin-top:10px;
-}
-
-.step{
-  width:18px;
-  height:18px;
-  border-radius:50%;
-  background:#1f2933;
-}
-
-.step.active{
-  background:var(--accent);
-}
-
-.sos{
-  background:var(--danger);
-  color:white;
-}
-
-video{
-  width:100%;
-  border-radius:20px;
-  margin-top:15px;
 }
 
 /* MIC ICON */
@@ -147,8 +89,7 @@ video{
   align-items:center;
   justify-content:center;
   font-size:28px;
-  transition:all .2s ease;
-  box-shadow:0 0 10px rgba(0,0,0,.5);
+  transition:.2s;
   z-index:1000;
 }
 
@@ -160,6 +101,12 @@ video{
 
 .mic-indicator.listening{
   transform:scale(1.2);
+}
+
+video{
+  width:100%;
+  border-radius:20px;
+  margin-top:15px;
 }
 </style>
 </head>
@@ -178,46 +125,41 @@ video{
   </div>
 
   <div class="grid">
-    <div class="feature" onclick="startCamera()">👁 Object</div>
-    <div class="feature">👤 Face</div>
-    <div class="feature">💵 Currency</div>
+    <div class="feature" onclick="openFeature('object')">👁 Object</div>
+    <div class="feature" onclick="openFeature('face')">👤 Face</div>
+    <div class="feature" onclick="openFeature('currency')">💵 Currency</div>
     <div class="feature" onclick="go('sos')">🚨 SOS</div>
   </div>
-
-  <video id="camera" autoplay playsinline></video>
 </div>
 
-<!-- NAVIGATION -->
+<!-- NAV -->
 <div class="screen" id="nav">
   <h2>Navigation</h2>
+  <div class="card">Walk forward carefully</div>
+</div>
 
-  <div class="map"></div>
+<!-- FACE -->
+<div class="screen" id="face">
+  <h2>Face Detection</h2>
+  <video id="faceCam" autoplay playsinline></video>
+</div>
 
-  <div class="card">
-    <strong>Instruction</strong>
-    <p>Walk forward carefully</p>
+<!-- OBJECT -->
+<div class="screen" id="object">
+  <h2>Object Detection</h2>
+  <video id="objectCam" autoplay playsinline></video>
+</div>
 
-    <div class="steps">
-      <div class="step"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-      <div class="step"></div>
-    </div>
-  </div>
+<!-- CURRENCY -->
+<div class="screen" id="currency">
+  <h2>Currency Detection</h2>
+  <video id="currencyCam" autoplay playsinline></video>
 </div>
 
 <!-- SOS -->
 <div class="screen" id="sos">
   <h2>Emergency</h2>
-
-  <div class="card">
-    <div class="button sos" onclick="sendSOS()">
-      SEND SOS
-    </div>
-    <p>Live location shared</p>
-  </div>
+  <div class="button" style="background:#ef4444;color:white" onclick="sendSOS()">SEND SOS</div>
 </div>
 
 <div class="navbar">
@@ -230,49 +172,47 @@ video{
 
 /* SCREEN SWITCH */
 function go(id){
+  stopAllCameras();
   document.querySelectorAll('.screen')
     .forEach(s=>s.classList.remove('active'))
   document.getElementById(id).classList.add('active')
 }
 
-/* CAMERA */
-function startCamera(){
+/* FEATURE OPEN */
+function openFeature(type){
+  go(type);
+  startCamera(type+"Cam");
+}
+
+/* CAMERA CONTROL */
+let currentStream;
+
+function startCamera(videoId){
+  stopAllCameras();
   navigator.mediaDevices.getUserMedia({video:true})
   .then(stream=>{
-    document.getElementById("camera").srcObject = stream;
-  })
-  .catch(()=>{
-    alert("Camera permission denied");
+    currentStream = stream;
+    document.getElementById(videoId).srcObject = stream;
   });
+}
+
+function stopAllCameras(){
+  if(currentStream){
+    currentStream.getTracks().forEach(track=>track.stop());
+  }
 }
 
 /* SOS */
 function sendSOS(){
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(pos=>{
-      const link =
-      "https://maps.google.com/?q=" +
-      pos.coords.latitude + "," + pos.coords.longitude;
-
-      alert("SOS Sent!\nLocation:\n" + link);
+      alert("SOS Sent!\nLocation:\nhttps://maps.google.com/?q=" 
+      + pos.coords.latitude + "," + pos.coords.longitude);
     });
   }
 }
 
-/* STEP ANIMATION */
-let stepIndex = 0;
-setInterval(()=>{
-  const steps = document.querySelectorAll(".step");
-  if(stepIndex < steps.length){
-    steps[stepIndex].classList.add("active");
-    stepIndex++;
-  }else{
-    stepIndex = 0;
-    steps.forEach(s=>s.classList.remove("active"));
-  }
-},2000);
-
-/* 🎤 MIC SOUND DETECTION */
+/* 🎤 MIC + VOICE COMMAND */
 let micIcon = document.getElementById("micIcon");
 
 function startVoice(){
@@ -291,7 +231,6 @@ function startVoice(){
 
     function detectSound(){
       analyser.getByteFrequencyData(dataArray);
-
       let volume = dataArray.reduce((a,b)=>a+b) / dataArray.length;
 
       if(volume > 40){
@@ -302,13 +241,31 @@ function startVoice(){
 
       requestAnimationFrame(detectSound);
     }
-
     detectSound();
 
-  })
-  .catch(()=>{
-    alert("Mic permission denied");
   });
+
+  /* SPEECH RECOGNITION */
+  const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if(!SpeechRecognition) return;
+
+  const recognition = new SpeechRecognition();
+  recognition.lang = "en-US";
+
+  recognition.onresult = function(event){
+    const text = event.results[0][0].transcript.toLowerCase();
+
+    if(text.includes("home")) go("home");
+    if(text.includes("navigation")) go("nav");
+    if(text.includes("sos")) go("sos");
+    if(text.includes("face")) openFeature("face");
+    if(text.includes("object")) openFeature("object");
+    if(text.includes("currency")) openFeature("currency");
+  };
+
+  recognition.start();
 }
 
 </script>
