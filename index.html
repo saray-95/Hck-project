@@ -76,35 +76,34 @@ h1,h2{margin:0 0 16px}
   padding:10px 0;
 }
 
-/* MIC ICON */
+/* MIC */
 .mic{
   position:fixed;
   top:15px;
   right:15px;
-  width:60px;
-  height:60px;
+  width:55px;
+  height:55px;
   border-radius:50%;
   background:var(--accent);
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:28px;
-  box-shadow:0 0 20px rgba(34,211,238,.5);
+  font-size:24px;
   transition:.2s;
 }
 
-.mic.listening{
-  animation:blink .5s infinite alternate;
+.mic.active{
+  animation:pulse .5s infinite alternate;
 }
 
-@keyframes blink{
+@keyframes pulse{
   from{box-shadow:0 0 10px var(--accent);}
-  to{box-shadow:0 0 40px var(--accent);}
+  to{box-shadow:0 0 35px var(--accent);}
 }
 
 video{
   width:100%;
-  border-radius:20px;
+  border-radius:15px;
   margin-top:10px;
 }
 </style>
@@ -117,6 +116,7 @@ video{
 <!-- HOME -->
 <div class="screen active" id="home">
   <h1>Smart Glass</h1>
+
   <div class="grid">
     <div class="feature" onclick="openFeature('currency')">💵 Currency</div>
     <div class="feature" onclick="openFeature('face')">👤 Face</div>
@@ -125,7 +125,7 @@ video{
   </div>
 </div>
 
-<!-- NAVIGATION -->
+<!-- NAV -->
 <div class="screen" id="nav">
   <h2>Navigation</h2>
   <div class="card">Walk forward 12 steps</div>
@@ -136,26 +136,26 @@ video{
   <h2>Emergency</h2>
   <div class="card">
     <div class="button" style="background:red;color:white"
-     onclick="alert('SOS Sent')">SEND SOS</div>
+      onclick="alert('SOS Sent Successfully')">SEND SOS</div>
   </div>
 </div>
 
 <!-- FACE -->
 <div class="screen" id="face">
   <h2>Face Recognition</h2>
-  <video id="faceCam" autoplay playsinline></video>
+  <video id="camera" autoplay playsinline></video>
 </div>
 
 <!-- OBJECT -->
 <div class="screen" id="object">
   <h2>Object Detection</h2>
-  <video id="objectCam" autoplay playsinline></video>
+  <video id="camera" autoplay playsinline></video>
 </div>
 
 <!-- CURRENCY -->
 <div class="screen" id="currency">
   <h2>Currency Detection</h2>
-  <video id="currencyCam" autoplay playsinline></video>
+  <video id="camera" autoplay playsinline></video>
 </div>
 
 <div class="navbar">
@@ -165,68 +165,73 @@ video{
 </div>
 
 <script>
-let currentStream = null;
-const micIcon = document.getElementById("mic");
+let stream = null;
+const mic = document.getElementById("mic");
 
 /* SCREEN SWITCH */
 function go(id){
   stopCamera();
   document.querySelectorAll('.screen')
-    .forEach(s=>s.classList.remove('active'));
+  .forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
 
-/* OPEN FEATURE + CAMERA */
-function openFeature(type){
-  go(type);
-  startCamera(type+"Cam");
+/* FEATURE OPEN */
+function openFeature(name){
+  go(name);
+  startCamera();
 }
 
 /* CAMERA */
-async function startCamera(videoId){
-  stopCamera();
+async function startCamera(){
   try{
-    currentStream = await navigator.mediaDevices.getUserMedia({video:true});
-    document.getElementById(videoId).srcObject = currentStream;
-  }catch(e){
-    alert("Camera permission denied");
+    stream = await navigator.mediaDevices.getUserMedia({video:true});
+    document.querySelectorAll("video")
+      .forEach(v=>v.srcObject = stream);
+  }catch(err){
+    console.log(err);
   }
 }
 
 function stopCamera(){
-  if(currentStream){
-    currentStream.getTracks().forEach(track=>track.stop());
+  if(stream){
+    stream.getTracks().forEach(t=>t.stop());
+    stream = null;
   }
 }
 
-/* VOICE SYSTEM */
+/* VOICE */
 const SpeechRecognition =
-  window.SpeechRecognition || window.webkitSpeechRecognition;
+window.SpeechRecognition || window.webkitSpeechRecognition;
 
 if(SpeechRecognition){
   const recognition = new SpeechRecognition();
   recognition.continuous = true;
   recognition.lang = "en-US";
 
-  recognition.onresult = function(event){
+  recognition.onresult = function(e){
     const text =
-      event.results[event.results.length-1][0].transcript.toLowerCase();
-    console.log(text);
+    e.results[e.results.length-1][0].transcript.toLowerCase();
 
-    micIcon.classList.add("listening");
-    setTimeout(()=>micIcon.classList.remove("listening"),300);
+    mic.classList.add("active");
+    setTimeout(()=>mic.classList.remove("active"),300);
 
     if(text.includes("home")) go("home");
-    if(text.includes("navigation")) go("nav");
-    if(text.includes("sos")) go("sos");
-    if(text.includes("face")) openFeature("face");
-    if(text.includes("object")) openFeature("object");
-    if(text.includes("currency")) openFeature("currency");
+    else if(text.includes("navigation")) go("nav");
+    else if(text.includes("sos")) go("sos");
+    else if(text.includes("face")) openFeature("face");
+    else if(text.includes("object")) openFeature("object");
+    else if(text.includes("currency")) openFeature("currency");
+  };
+
+  recognition.onerror = function(){
+    recognition.stop();
+    setTimeout(()=>recognition.start(),1000);
   };
 
   recognition.start();
 }else{
-  alert("Speech Recognition not supported. Use Chrome.");
+  alert("Use Chrome Browser");
 }
 </script>
 
