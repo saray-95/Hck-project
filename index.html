@@ -3,152 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vision Guide AI - Full Prototype</title>
+    <title>Vision Guide AI - Full UI</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1a1a; color: white; text-align: center; margin: 0; padding: 20px; }
-        #video-container { position: relative; margin: 20px auto; width: fit-content; border: 4px solid #3498db; border-radius: 15px; overflow: hidden; background: #000; }
-        video { width: 100%; max-width: 500px; display: block; }
-        canvas { position: absolute; top: 0; left: 0; }
-        .controls { margin-top: 20px; }
-        .btn-mic { background: #e74c3c; color: white; padding: 25px; border-radius: 50%; border: none; cursor: pointer; font-size: 24px; transition: 0.3s; box-shadow: 0 0 15px rgba(231, 76, 60, 0.5); }
-        .btn-mic:active { transform: scale(0.9); background: #c0392b; }
-        #status { font-size: 1.2rem; color: #2ecc71; margin-top: 15px; font-weight: bold; min-height: 1.5em; }
-        .info { color: #bbb; font-size: 0.9rem; margin-top: 10px; }
+        :root { --primary: #2ecc71; --bg: #121212; --card: #1e1e1e; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; }
+        
+        /* 1. Logo Splash Screen */
+        #splash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; cursor: pointer; }
+        .logo-circle { width: 150px; height: 150px; background: var(--primary); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 80px; box-shadow: 0 0 30px var(--primary); }
+        
+        /* 2. Main Dashboard */
+        #main-app { display: none; padding: 20px; height: 100vh; box-sizing: border-box; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .battery { color: #2ecc71; font-weight: bold; }
+
+        .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        .card { background: var(--card); padding: 25px 10px; border-radius: 15px; text-align: center; border: 1px solid #333; cursor: pointer; }
+        .card:active { background: #333; }
+        .card i { display: block; font-size: 30px; margin-bottom: 10px; }
+
+        /* 3. Camera/Action Section */
+        #action-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 50; }
+        video { width: 100%; height: 70%; object-fit: cover; }
+        #results { height: 30%; padding: 20px; background: var(--card); border-top: 5px solid var(--primary); font-size: 1.5rem; text-align: center; }
+        .back-btn { position: absolute; top: 20px; left: 20px; background: white; color: black; padding: 10px; border-radius: 5px; }
+
+        /* 4. Bottom Mic */
+        .mic-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); text-align: center; }
+        .btn-mic { background: #e74c3c; width: 80px; height: 80px; border-radius: 50%; border: none; font-size: 35px; color: white; cursor: pointer; box-shadow: 0 0 20px rgba(231,76,60,0.5); }
     </style>
 </head>
 <body>
 
-    <h1>Vision Guide AI</h1>
-    <div id="status">Initializing Camera...</div>
-
-    <div id="video-container">
-        <video id="webcam" autoplay muted></video>
-        <canvas id="overlay"></canvas>
+    <div id="splash" onclick="enterApp()">
+        <div class="logo-circle">👁️</div>
+        <h2 style="margin-top:20px;">VISION GUIDE AI</h2>
+        <p>Click to Start</p>
     </div>
 
-    <div class="controls">
-        <button class="btn-mic" id="micBtn">🎤</button>
-        <p class="info">Tap the Mic and say "Hospital", "Hello", or "Where am I?"</p>
+    <div id="main-app">
+        <div class="header">
+            <span id="nav-title">DASHBOARD</span>
+            <span class="battery" id="battery-level">🔋 85%</span>
+        </div>
+
+        <div class="features-grid">
+            <div class="card" onclick="openFeature('Navigation')">📍<br>Navigation</div>
+            <div class="card" onclick="openFeature('Object Detection')">🔍<br>Objects</div>
+            <div class="card" onclick="openFeature('Currency')">💵<br>Currency</div>
+            <div class="card" onclick="openFeature('Face Detection')">👤<br>Face ID</div>
+            <div class="card" style="grid-column: span 2; background: #c0392b;" onclick="speak('Emergency SOS Sent to Family')">🆘 EMERGENCY SOS</div>
+        </div>
+
+        <div class="mic-container">
+            <button class="btn-mic" onclick="startVoiceAssistant()">🎤</button>
+            <p id="mic-status" style="margin-top:10px; color:#bbb;">Voice Assistant</p>
+        </div>
+    </div>
+
+    <div id="action-screen">
+        <button class="back-btn" onclick="closeFeature()">⬅ BACK</button>
+        <video id="webcam" autoplay muted></video>
+        <div id="results">Scanning...</div>
     </div>
 
     <script>
         const video = document.getElementById('webcam');
-        const canvas = document.getElementById('overlay');
-        const statusText = document.getElementById('status');
-        const micBtn = document.getElementById('micBtn');
+        const results = document.getElementById('results');
         let model;
 
-        // 1. Audio Speech Function
+        // Start App
+        function enterApp() {
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+            speak("Welcome to Vision Guide. Dashboard loaded.");
+            loadModel();
+        }
+
+        async function loadModel() {
+            model = await cocoSsd.load();
+            console.log("Model Loaded");
+        }
+
+        // Feature Navigation
+        function openFeature(type) {
+            document.getElementById('action-screen').style.display = 'block';
+            results.innerText = "Mode: " + type;
+            speak(type + " mode activated.");
+            startCamera();
+            if(type === 'Object Detection') detectObjects();
+        }
+
+        function closeFeature() {
+            document.getElementById('action-screen').style.display = 'none';
+            stopCamera();
+        }
+
+        async function startCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+        }
+
+        function stopCamera() {
+            let stream = video.srcObject;
+            let tracks = stream.getTracks();
+            tracks.forEach(track => track.stop());
+        }
+
+        // Voice Engine
         function speak(text) {
-            window.speechSynthesis.cancel(); // Stop any current speech
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 1.0;
             window.speechSynthesis.speak(utterance);
         }
 
-        // 2. Setup Camera
-        async function setupCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
-                video.srcObject = stream;
-                return new Promise((resolve) => {
-                    video.onloadedmetadata = () => {
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        resolve();
-                    };
-                });
-            } catch (err) {
-                statusText.innerText = "Error: Camera Access Denied!";
-                console.error(err);
-            }
-        }
-
-        // 3. Object Detection Loop
-        async function detectFrame() {
-            const predictions = await model.detect(video);
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            predictions.forEach(prediction => {
-                if (prediction.score > 0.6) {
-                    // Draw box
-                    ctx.strokeStyle = "#00FF00";
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(...prediction.bbox);
-                    
-                    // Simple logic for voice alert (only if object is large/close)
-                    const area = prediction.bbox[2] * prediction.bbox[3];
-                    if (area > (canvas.width * canvas.height / 4)) {
-                        speak(`Caution: ${prediction.class} in front of you`);
-                    }
-                }
-            });
-            requestAnimationFrame(detectFrame);
-        }
-
-        // 4. Voice Recognition (The "Listening" part)
-        function startListening() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) {
-                alert("Your browser does not support Speech Recognition.");
-                return;
-            }
-
-            const recognition = new SpeechRecognition();
+        function startVoiceAssistant() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
             recognition.lang = 'en-US';
+            document.getElementById('mic-status').innerText = "Listening...";
             
-            recognition.onstart = () => {
-                statusText.innerText = "Listening...";
-                statusText.style.color = "#e74c3c";
-            };
-
-            recognition.onspeechend = () => {
-                recognition.stop();
-                statusText.style.color = "#2ecc71";
-            };
-
             recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript.toLowerCase();
-                statusText.innerText = "I heard: " + transcript;
-                processCommand(transcript);
+                const cmd = event.results[0][0].transcript.toLowerCase();
+                document.getElementById('mic-status').innerText = "Command: " + cmd;
+                
+                if(cmd.includes('navigation')) openFeature('Navigation');
+                else if(cmd.includes('object')) openFeature('Object Detection');
+                else if(cmd.includes('hospital')) speak("Navigating to nearby hospital.");
+                else speak("I heard " + cmd);
             };
-
-            recognition.onerror = (err) => {
-                statusText.innerText = "Error in listening...";
-                console.error(err);
-            };
-
             recognition.start();
         }
 
-        function processCommand(cmd) {
-            if (cmd.includes('hospital')) {
-                speak("Searching for the nearest hospital. Walk straight for 300 meters and turn left.");
-            } else if (cmd.includes('hello') || cmd.includes('hi')) {
-                speak("Hello! I am your vision assistant. I am monitoring your surroundings.");
-            } else if (cmd.includes('where am i')) {
-                speak("You are currently on the main road. Traffic is moving normally.");
-            } else {
-                speak("I heard " + cmd + ". I am not sure how to help with that yet.");
+        async function detectObjects() {
+            if(document.getElementById('action-screen').style.display === 'block') {
+                const predictions = await model.detect(video);
+                if(predictions.length > 0) {
+                    results.innerText = "Detected: " + predictions[0].class;
+                    // Auto-voice for large objects
+                    speak(predictions[0].class);
+                }
+                setTimeout(detectObjects, 2000);
             }
         }
-
-        // Initialize Everything
-        async function init() {
-            await setupCamera();
-            statusText.innerText = "Loading AI Model...";
-            model = await cocoSsd.load();
-            statusText.innerText = "System Ready! Tap Mic to talk.";
-            speak("System initialized. I am ready to guide you.");
-            
-            micBtn.addEventListener('click', startListening);
-            detectFrame();
-        }
-
-        init();
     </script>
 </body>
 </html>
