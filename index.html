@@ -1,215 +1,249 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<title>AI Smart Glass App</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clone Vision - Real Assist</title>
 
 <style>
-:root{
---bg:#0A0A0A;
---glow:#00E5FF;
---card:rgba(255,255,255,0.05);
---danger:#ff2e2e;
+:root {
+  --bg: #0a0a0a;
+  --card: rgba(255,255,255,0.05);
+  --accent: #00eaff;
+  --text: #ffffff;
+  --muted: #aaaaaa;
 }
 
-*{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif;}
+* { box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
 
-body{
-background:var(--bg);
-color:white;
-display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
 }
 
-.app{
-width:390px;
-height:780px;
-background:var(--bg);
-border-radius:35px;
-padding:20px;
-overflow:hidden;
-position:relative;
-box-shadow:0 0 40px #000;
+/* ---------- COMMON ---------- */
+.screen {
+  display: none;
+  padding: 20px;
+  min-height: 100vh;
 }
 
-.screen{
-position:absolute;
-width:100%;
-height:100%;
-display:none;
-animation:fade 0.3s ease;
+.screen.active {
+  display: block;
 }
 
-.active{display:block;}
-
-@keyframes fade{
-from{opacity:0;}
-to{opacity:1;}
+.card {
+  background: var(--card);
+  border-radius: 20px;
+  padding: 20px;
+  margin-bottom: 16px;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 0 25px rgba(0,234,255,0.08);
 }
 
-.card{
-background:var(--card);
-backdrop-filter:blur(15px);
-padding:15px;
-border-radius:24px;
-margin-top:15px;
-box-shadow:0 0 15px rgba(0,229,255,0.2);
+button {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-button{
-width:100%;
-padding:12px;
-margin-top:10px;
-border-radius:24px;
-border:2px solid var(--glow);
-background:transparent;
-color:var(--glow);
-transition:0.3s;
+button.glow {
+  box-shadow: 0 0 25px var(--accent);
 }
 
-button:hover{
-background:var(--glow);
-color:black;
-box-shadow:0 0 20px var(--glow);
+.navbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #111;
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0;
 }
 
-video{
-width:100%;
-border-radius:24px;
-margin-top:10px;
+.navbar div {
+  color: var(--muted);
+  cursor: pointer;
 }
 
-.sos{
-background:var(--danger);
-border:none;
-color:white;
-box-shadow:0 0 20px var(--danger);
+.navbar div.active {
+  color: var(--accent);
 }
 
+/* ---------- HOME ---------- */
+.home-title {
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 14px;
+}
+
+.feature {
+  background: var(--card);
+  padding: 18px;
+  border-radius: 18px;
+  text-align: center;
+  transition: 0.3s;
+}
+
+.feature:hover {
+  box-shadow: 0 0 20px rgba(0,234,255,0.2);
+}
+
+/* ---------- NAVIGATION ---------- */
+.map {
+  height: 280px;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at center, rgba(0,234,255,0.15), transparent 60%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,0.05) 0,
+      rgba(255,255,255,0.05) 1px,
+      transparent 1px,
+      transparent 40px
+    );
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.user-dot {
+  width: 14px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  box-shadow: 0 0 20px var(--accent);
+}
+
+.steps {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+/* ---------- AI VISION ---------- */
+.scan {
+  height: 200px;
+  border-radius: 20px;
+  background: linear-gradient(180deg,#111,#000);
+  position: relative;
+  overflow: hidden;
+}
+
+.scan::after {
+  content: "";
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(0,234,255,0.3),
+    transparent
+  );
+  animation: scan 3s infinite;
+}
+
+@keyframes scan {
+  to { top: 100%; }
+}
+
+/* ---------- SOS ---------- */
+.sos {
+  background: red;
+  color: white;
+  font-size: 20px;
+  width: 100%;
+  padding: 18px;
+  border-radius: 60px;
+  box-shadow: 0 0 30px red;
+}
 </style>
 </head>
-<body>
 
-<div class="app">
+<body>
 
 <!-- HOME -->
 <div class="screen active" id="home">
-<h2>Clone Vision</h2>
-<button onclick="show('navigation')">Start Navigation</button>
-<button onclick="show('vision')">AI Vision</button>
-<button onclick="show('emergency')">Emergency</button>
-<button onclick="show('battery')">Battery</button>
-<button onclick="startVoice()">🎤 Voice Assist</button>
+  <div class="home-title">Smart Glass Dashboard</div>
+
+  <button class="glow" onclick="openScreen('nav')">Start Navigation</button>
+
+  <div class="card">
+    Battery: 82% • GPS Connected • Camera Active
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature" onclick="openScreen('vision')">👁 AI Vision</div>
+    <div class="feature">💵 Currency</div>
+    <div class="feature">🙂 Face ID</div>
+    <div class="feature" onclick="openScreen('sos')">🚨 SOS</div>
+  </div>
 </div>
 
 <!-- NAVIGATION -->
-<div class="screen" id="navigation">
-<h2>Step Navigation</h2>
-<div class="card">
-<div id="navText">Starting...</div>
-</div>
-<button onclick="show('home')">Back</button>
+<div class="screen" id="nav">
+  <div class="map">
+    <div class="user-dot"></div>
+  </div>
+
+  <div class="card">
+    <div class="steps">➡️ Turn right after 8 steps</div>
+    <div style="color:var(--muted)">Zebra crossing in 15 steps</div>
+  </div>
+
+  <button class="glow">🎤 Voice Command</button>
 </div>
 
-<!-- VISION -->
+<!-- AI VISION -->
 <div class="screen" id="vision">
-<h2>AI Camera</h2>
-<video id="video" autoplay></video>
-<button onclick="capture()">Capture Info</button>
-<div class="card" id="visionResult"></div>
-<button onclick="show('home'); stopCam()">Back</button>
+  <div class="scan"></div>
+
+  <div class="card">
+    Detected: <b>500 Rupees</b><br>
+    Person: <b>Arun</b>
+  </div>
 </div>
 
-<!-- EMERGENCY -->
-<div class="screen" id="emergency">
-<h2>Emergency SOS</h2>
-<button class="sos" onclick="sendSOS()">Send SOS</button>
-<div class="card" id="sosStatus"></div>
-<button onclick="show('home')">Back</button>
+<!-- SOS -->
+<div class="screen" id="sos">
+  <div class="card">
+    Emergency Alert
+  </div>
+
+  <button class="sos">SEND SOS</button>
 </div>
 
-<!-- BATTERY -->
-<div class="screen" id="battery">
-<h2>Device Battery</h2>
-<div class="card" id="batteryStatus">Loading...</div>
-<button onclick="show('home')">Back</button>
-</div>
-
+<!-- NAV BAR -->
+<div class="navbar">
+  <div class="active" onclick="openScreen('home')">Home</div>
+  <div onclick="openScreen('nav')">Nav</div>
+  <div onclick="openScreen('vision')">Vision</div>
+  <div onclick="openScreen('sos')">SOS</div>
 </div>
 
 <script>
-function show(id){
-document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-document.getElementById(id).classList.add('active');
-if(id==="vision") startCam();
-if(id==="navigation") startNav();
-if(id==="battery") loadBattery();
-}
+function openScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
 
-/* Navigation Simulation */
-function startNav(){
-let steps=0;
-let nav=document.getElementById("navText");
-let navInt=setInterval(()=>{
-steps++;
-nav.innerText=steps+" steps ahead";
-if(!document.getElementById("navigation").classList.contains("active")){
-clearInterval(navInt);
-}
-},1000);
-}
-
-/* Camera */
-let stream;
-async function startCam(){
-stream=await navigator.mediaDevices.getUserMedia({video:true});
-document.getElementById("video").srcObject=stream;
-}
-function stopCam(){
-if(stream) stream.getTracks().forEach(t=>t.stop());
-}
-function capture(){
-document.getElementById("visionResult").innerText="Obstacle detected ahead";
-}
-
-/* SOS with location */
-function sendSOS(){
-let status=document.getElementById("sosStatus");
-if(navigator.geolocation){
-navigator.geolocation.getCurrentPosition(pos=>{
-status.innerText="Alert sent with location: "
-+pos.coords.latitude+", "+pos.coords.longitude;
-});
-}else{
-status.innerText="Location not supported";
-}
-}
-
-/* Battery API */
-function loadBattery(){
-if(navigator.getBattery){
-navigator.getBattery().then(battery=>{
-document.getElementById("batteryStatus").innerText=
-"Battery: "+Math.round(battery.level*100)+"%";
-});
-}else{
-document.getElementById("batteryStatus").innerText="Battery API not supported";
-}
-}
-
-/* Voice Assist */
-function startVoice(){
-const rec=new(window.SpeechRecognition||window.webkitSpeechRecognition)();
-rec.lang="en-US";
-rec.start();
-rec.onresult=function(e){
-let cmd=e.results[0][0].transcript.toLowerCase();
-if(cmd.includes("navigation")) show("navigation");
-if(cmd.includes("camera")) show("vision");
-if(cmd.includes("emergency")) show("emergency");
-};
+  document.querySelectorAll(".navbar div").forEach(n => n.classList.remove("active"));
 }
 </script>
 
