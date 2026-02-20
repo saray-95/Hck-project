@@ -3,149 +3,129 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vision Guide AI - Full UI</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+    <title>Smart Glass Hardware Simulator</title>
     <style>
-        :root { --primary: #2ecc71; --bg: #121212; --card: #1e1e1e; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: white; margin: 0; overflow: hidden; }
+        body { margin: 0; background: #111; color: #0f0; font-family: 'Courier New', monospace; overflow: hidden; }
         
-        /* 1. Logo Splash Screen */
-        #splash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; cursor: pointer; }
-        .logo-circle { width: 150px; height: 150px; background: var(--primary); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 80px; box-shadow: 0 0 30px var(--primary); }
-        
-        /* 2. Main Dashboard */
-        #main-app { display: none; padding: 20px; height: 100vh; box-sizing: border-box; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .battery { color: #2ecc71; font-weight: bold; }
+        /* Glass Viewport */
+        #glass-view {
+            width: 100vw; height: 100vh;
+            border: 40px solid #222; box-sizing: border-box;
+            position: relative; background: url('https://images.unsplash.com/photo-1516738901171-8eb4fc13bd20?auto=format&fit=crop&q=80&w=1000') center/cover;
+        }
 
-        .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
-        .card { background: var(--card); padding: 25px 10px; border-radius: 15px; text-align: center; border: 1px solid #333; cursor: pointer; }
-        .card:active { background: #333; }
-        .card i { display: block; font-size: 30px; margin-bottom: 10px; }
+        /* Scan Lines & HUD */
+        #hud-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, rgba(0,255,0,0.05) 0px, rgba(0,255,0,0.05) 1px, transparent 2px);
+            pointer-events: none;
+        }
 
-        /* 3. Camera/Action Section */
-        #action-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 50; }
-        video { width: 100%; height: 70%; object-fit: cover; }
-        #results { height: 30%; padding: 20px; background: var(--card); border-top: 5px solid var(--primary); font-size: 1.5rem; text-align: center; }
-        .back-btn { position: absolute; top: 20px; left: 20px; background: white; color: black; padding: 10px; border-radius: 5px; }
+        /* The Draggable Object (Obstacle) */
+        #obstacle {
+            position: absolute; width: 100px; height: 100px;
+            cursor: move; transition: transform 0.1s;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        #obstacle img { width: 100%; filter: drop-shadow(0 0 10px red); }
 
-        /* 4. Bottom Mic */
-        .mic-container { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); text-align: center; }
-        .btn-mic { background: #e74c3c; width: 80px; height: 80px; border-radius: 50%; border: none; font-size: 35px; color: white; cursor: pointer; box-shadow: 0 0 20px rgba(231,76,60,0.5); }
+        /* Scanning Box */
+        #scan-box {
+            position: absolute; border: 2px dashed #0f0;
+            pointer-events: none; display: none;
+        }
+
+        .data-panel {
+            position: absolute; top: 60px; left: 60px;
+            background: rgba(0,40,0,0.7); padding: 20px;
+            border-left: 5px solid #0f0; font-size: 1.2rem;
+        }
     </style>
 </head>
 <body>
 
-    <div id="splash" onclick="enterApp()">
-        <div class="logo-circle">👁️</div>
-        <h2 style="margin-top:20px;">VISION GUIDE AI</h2>
-        <p>Click to Start</p>
+<div id="glass-view">
+    <div id="hud-overlay"></div>
+
+    <div class="data-panel">
+        <div>STATUS: SCANNING...</div>
+        <div id="target">TARGET: NONE</div>
+        <div id="dist">DISTANCE: -- m</div>
+        <div id="alert" style="color: red; font-weight: bold;"></div>
     </div>
 
-    <div id="main-app">
-        <div class="header">
-            <span id="nav-title">DASHBOARD</span>
-            <span class="battery" id="battery-level">🔋 85%</span>
-        </div>
-
-        <div class="features-grid">
-            <div class="card" onclick="openFeature('Navigation')">📍<br>Navigation</div>
-            <div class="card" onclick="openFeature('Object Detection')">🔍<br>Objects</div>
-            <div class="card" onclick="openFeature('Currency')">💵<br>Currency</div>
-            <div class="card" onclick="openFeature('Face Detection')">👤<br>Face ID</div>
-            <div class="card" style="grid-column: span 2; background: #c0392b;" onclick="speak('Emergency SOS Sent to Family')">🆘 EMERGENCY SOS</div>
-        </div>
-
-        <div class="mic-container">
-            <button class="btn-mic" onclick="startVoiceAssistant()">🎤</button>
-            <p id="mic-status" style="margin-top:10px; color:#bbb;">Voice Assistant</p>
-        </div>
+    <div id="obstacle">
+        <img src="https://cdn-icons-png.flaticon.com/512/564/564619.png" id="obj-img">
+        <span style="background:red; color:white; padding:2px 5px; font-size:10px;">OBSTACLE</span>
     </div>
 
-    <div id="action-screen">
-        <button class="back-btn" onclick="closeFeature()">⬅ BACK</button>
-        <video id="webcam" autoplay muted></video>
-        <div id="results">Scanning...</div>
-    </div>
+    <div id="scan-box"></div>
+</div>
 
-    <script>
-        const video = document.getElementById('webcam');
-        const results = document.getElementById('results');
-        let model;
+<script>
+    const obstacle = document.getElementById('obstacle');
+    const scanBox = document.getElementById('scan-box');
+    const targetText = document.getElementById('target');
+    const distText = document.getElementById('dist');
+    const alertText = document.getElementById('alert');
 
-        // Start App
-        function enterApp() {
-            document.getElementById('splash').style.display = 'none';
-            document.getElementById('main-app').style.display = 'block';
-            speak("Welcome to Vision Guide. Dashboard loaded.");
-            loadModel();
+    let isDragging = false;
+    let size = 100; // Base size for distance simulation
+
+    // 1. Move Object with Mouse
+    document.addEventListener('mousedown', () => isDragging = true);
+    document.addEventListener('mouseup', () => isDragging = false);
+    
+    document.addEventListener('mousemove', (e) => {
+        if(isDragging) {
+            obstacle.style.left = (e.clientX - size/2) + 'px';
+            obstacle.style.top = (e.clientY - size/2) + 'px';
+            updateDetection(e.clientX, e.clientY);
         }
+    });
 
-        async function loadModel() {
-            model = await cocoSsd.load();
-            console.log("Model Loaded");
-        }
+    // 2. Simulate Distance with Mouse Wheel
+    document.addEventListener('wheel', (e) => {
+        size += e.deltaY * -0.1;
+        size = Math.min(Math.max(50, size), 400); // Limit size
+        obstacle.style.width = size + 'px';
+        obstacle.style.height = size + 'px';
+        updateDetection();
+    });
 
-        // Feature Navigation
-        function openFeature(type) {
-            document.getElementById('action-screen').style.display = 'block';
-            results.innerText = "Mode: " + type;
-            speak(type + " mode activated.");
-            startCamera();
-            if(type === 'Object Detection') detectObjects();
-        }
+    function updateDetection() {
+        const rect = obstacle.getBoundingClientRect();
+        
+        // Show Scan Box
+        scanBox.style.display = 'block';
+        scanBox.style.left = (rect.left - 10) + 'px';
+        scanBox.style.top = (rect.top - 10) + 'px';
+        scanBox.style.width = (rect.width + 20) + 'px';
+        scanBox.style.height = (rect.height + 20) + 'px';
 
-        function closeFeature() {
-            document.getElementById('action-screen').style.display = 'none';
-            stopCamera();
-        }
+        // 3. Distance Logic (Virtual)
+        // Perusa iruntha pakkathula, chinna-tha iruntha dhooram
+        const distance = (400 / size).toFixed(1); 
+        
+        targetText.innerText = "TARGET: CHAIR DETECTED";
+        distText.innerText = `DISTANCE: ${distance} m`;
 
-        async function startCamera() {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            video.srcObject = stream;
+        if(distance < 1.5) {
+            alertText.innerText = "WARNING: IMPACT IMMINENT!";
+            playAlertSound();
+        } else {
+            alertText.innerText = "";
         }
+    }
 
-        function stopCamera() {
-            let stream = video.srcObject;
-            let tracks = stream.getTracks();
-            tracks.forEach(track => track.stop());
+    function playAlertSound() {
+        // Simple beep logic
+        if(!window.speechSynthesis.speaking) {
+            const msg = new SpeechSynthesisUtterance("Obstacle ahead. 1 meter.");
+            window.speechSynthesis.speak(msg);
         }
+    }
+</script>
 
-        // Voice Engine
-        function speak(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            window.speechSynthesis.speak(utterance);
-        }
-
-        function startVoiceAssistant() {
-            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-            recognition.lang = 'en-US';
-            document.getElementById('mic-status').innerText = "Listening...";
-            
-            recognition.onresult = (event) => {
-                const cmd = event.results[0][0].transcript.toLowerCase();
-                document.getElementById('mic-status').innerText = "Command: " + cmd;
-                
-                if(cmd.includes('navigation')) openFeature('Navigation');
-                else if(cmd.includes('object')) openFeature('Object Detection');
-                else if(cmd.includes('hospital')) speak("Navigating to nearby hospital.");
-                else speak("I heard " + cmd);
-            };
-            recognition.start();
-        }
-
-        async function detectObjects() {
-            if(document.getElementById('action-screen').style.display === 'block') {
-                const predictions = await model.detect(video);
-                if(predictions.length > 0) {
-                    results.innerText = "Detected: " + predictions[0].class;
-                    // Auto-voice for large objects
-                    speak(predictions[0].class);
-                }
-                setTimeout(detectObjects, 2000);
-            }
-        }
-    </script>
 </body>
 </html>
