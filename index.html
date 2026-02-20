@@ -1,145 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Glass AI Simulation</title>
-    <style>
-        body { margin: 0; background: #0a0a0a; color: #00ff00; font-family: 'Courier New', monospace; overflow: hidden; }
+<meta charset="UTF-8">
+<title>AI Smart Glass App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        /* Smart Glass Frame Effect */
-        #glass-frame {
-            position: absolute; width: 100vw; height: 100vh;
-            border-left: 100px solid rgba(20,20,20,0.9);
-            border-right: 100px solid rgba(20,20,20,0.9);
-            box-sizing: border-box; display: flex; align-items: center; justify-content: center;
-        }
+<style>
+:root{
+  --bg:#0A0A0A;
+  --card:#111827;
+  --accent:#22d3ee;
+  --danger:#ef4444;
+  --text:#e5e7eb;
+}
 
-        /* The Visual Field (What the camera sees) */
-        #camera-view {
-            width: 80%; height: 80%; border: 2px solid #333;
-            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
-            position: relative; overflow: hidden;
-        }
+*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
 
-        /* Moveable Obstacle */
-        #obstacle {
-            position: absolute; width: 100px; height: 100px;
-            background: #ff0000; border: 3px solid #fff;
-            box-shadow: 0 0 20px rgba(255,0,0,0.8);
-            cursor: grab; display: flex; align-items: center; justify-content: center;
-            font-size: 12px; font-weight: bold; color: white; border-radius: 5px;
-            left: 50%; top: 50%;
-        }
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+}
 
-        /* Glass HUD Details */
-        #hud-top {
-            position: absolute; top: 20px; left: 20px;
-            padding: 15px; border-left: 4px solid #00ff00; background: rgba(0,20,0,0.5);
-        }
+.screen{
+  display:none;
+  padding:20px;
+  min-height:100vh;
+}
 
-        #aim-finder {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 200px; height: 150px; border: 1px solid rgba(0,255,0,0.3);
-            pointer-events: none;
-        }
+.screen.active{display:block}
 
-        #target-lock {
-            position: absolute; border: 2px solid #00ff00;
-            display: none; transition: 0.1s; pointer-events: none;
-        }
+h1,h2{margin:0 0 16px}
 
-        .alert-box { color: #ff0000; font-weight: bold; margin-top: 10px; animation: blink 1s infinite; display: none; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-    </style>
+.card{
+  background:linear-gradient(145deg,#0f172a,#020617);
+  border-radius:20px;
+  padding:18px;
+  margin-bottom:16px;
+  box-shadow:0 0 20px rgba(34,211,238,0.15);
+}
+
+.button{
+  background:var(--accent);
+  color:#000;
+  padding:16px;
+  text-align:center;
+  border-radius:999px;
+  font-weight:bold;
+  cursor:pointer;
+  margin:10px 0;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+}
+
+.feature{
+  padding:14px;
+  border-radius:16px;
+  background:#020617;
+  border:1px solid rgba(34,211,238,.3);
+  cursor:pointer;
+}
+
+.feature:hover{
+  box-shadow:0 0 15px rgba(34,211,238,.5);
+}
+
+.navbar{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:#020617;
+  display:flex;
+  justify-content:space-around;
+  padding:10px 0;
+}
+
+.navbar div{
+  cursor:pointer;
+  font-size:14px;
+}
+
+/* Navigation map */
+.map{
+  height:220px;
+  border-radius:20px;
+  background:
+    radial-gradient(circle at center,rgba(34,211,238,.15),transparent 60%),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,.04) 0,
+      rgba(255,255,255,.04) 1px,
+      transparent 1px,
+      transparent 30px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255,255,255,.04) 0,
+      rgba(255,255,255,.04) 1px,
+      transparent 1px,
+      transparent 30px
+    );
+}
+
+.steps{
+  display:flex;
+  gap:6px;
+  margin-top:10px;
+}
+
+.step{
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  background:#1f2933;
+}
+
+.step.active{
+  background:var(--accent);
+}
+
+/* SOS */
+.sos{
+  background:var(--danger);
+  color:white;
+}
+</style>
 </head>
+
 <body>
 
-<div id="glass-frame">
-    <div id="camera-view">
-        <div id="aim-finder"></div> <div id="hud-top">
-            <div>MODE: VISION ASSIST</div>
-            <div id="obj-name">SCANNING...</div>
-            <div id="distance">DIST: -- m</div>
-            <div id="warning" class="alert-box">⚠️ CAUTION: OBJECT NEAR</div>
-        </div>
+<!-- HOME -->
+<div class="screen active" id="home">
+  <h1>Smart Glass</h1>
 
-        <div id="obstacle">OBSTACLE</div>
-        <div id="target-lock"></div>
+  <div class="card">
+    <div class="button" onclick="go('nav')">Start Navigation</div>
+  </div>
+
+  <div class="grid">
+    <div class="feature" onclick="alert('Currency Detection')">💵 Currency</div>
+    <div class="feature" onclick="alert('Face Recognition')">👤 Face</div>
+    <div class="feature" onclick="alert('Object Detection')">👁 Object</div>
+    <div class="feature" onclick="go('sos')">🚨 SOS</div>
+  </div>
+</div>
+
+<!-- NAVIGATION -->
+<div class="screen" id="nav">
+  <h2>Navigation</h2>
+
+  <div class="map"></div>
+
+  <div class="card">
+    <strong>Instruction</strong>
+    <p>Walk forward for 12 steps</p>
+
+    <div class="steps">
+      <div class="step active"></div>
+      <div class="step active"></div>
+      <div class="step active"></div>
+      <div class="step"></div>
+      <div class="step"></div>
+      <div class="step"></div>
     </div>
+  </div>
+
+  <div class="card">
+    🦶 Zebra crossing in 15 steps  
+    <br>🚗 Vehicle approaching from left
+  </div>
+</div>
+
+<!-- SOS -->
+<div class="screen" id="sos">
+  <h2>Emergency</h2>
+
+  <div class="card">
+    <div class="button sos" onclick="alert('SOS Sent to Family')">
+      SEND SOS
+    </div>
+    <p>Live location shared</p>
+  </div>
+</div>
+
+<div class="navbar">
+  <div onclick="go('home')">Home</div>
+  <div onclick="go('nav')">Navigate</div>
+  <div onclick="go('sos')">SOS</div>
 </div>
 
 <script>
-    const obstacle = document.getElementById('obstacle');
-    const lock = document.getElementById('target-lock');
-    const distText = document.getElementById('distance');
-    const warning = document.getElementById('warning');
-    const objName = document.getElementById('obj-name');
-
-    let isMoving = false;
-    let size = 100;
-
-    // Mouse Controls
-    obstacle.addEventListener('mousedown', () => isMoving = true);
-    document.addEventListener('mouseup', () => isMoving = false);
-    
-    document.addEventListener('mousemove', (e) => {
-        if(isMoving) {
-            obstacle.style.left = (e.clientX - size/2 - 100) + 'px';
-            obstacle.style.top = (e.clientY - size/2 - 50) + 'px';
-            runAILogic();
-        }
-    });
-
-    // Distance Simulation (Scroll)
-    document.addEventListener('wheel', (e) => {
-        size += e.deltaY * -0.2;
-        size = Math.min(Math.max(40, size), 350);
-        obstacle.style.width = size + 'px';
-        obstacle.style.height = size + 'px';
-        runAILogic();
-    });
-
-    function runAILogic() {
-        const rect = obstacle.getBoundingClientRect();
-        const centerView = document.getElementById('aim-finder').getBoundingClientRect();
-
-        // Check if object is inside sensor area
-        if (rect.left < centerView.right && rect.right > centerView.left &&
-            rect.top < centerView.bottom && rect.bottom > centerView.top) {
-            
-            lock.style.display = 'block';
-            lock.style.left = (rect.left - 110) + 'px'; // Offset adjustments
-            lock.style.top = (rect.top - 60) + 'px';
-            lock.style.width = rect.width + 'px';
-            lock.style.height = rect.height + 'px';
-
-            // Calculate Distance
-            const dist = (300 / size).toFixed(1);
-            distText.innerText = `DIST: ${dist} m`;
-            objName.innerText = "OBJECT: CHAIR";
-
-            if(dist < 1.0) {
-                warning.style.display = 'block';
-                speakOnce(`Alert! Object at ${dist} meters.`);
-            } else {
-                warning.style.display = 'none';
-            }
-        } else {
-            lock.style.display = 'none';
-            distText.innerText = "DIST: -- m";
-            objName.innerText = "SCANNING...";
-        }
-    }
-
-    let lastTime = 0;
-    function speakOnce(msg) {
-        if(Date.now() - lastTime > 3000) {
-            const utter = new SpeechSynthesisUtterance(msg);
-            window.speechSynthesis.speak(utter);
-            lastTime = Date.now();
-        }
-    }
+function go(id){
+  document.querySelectorAll('.screen')
+    .forEach(s=>s.classList.remove('active'))
+  document.getElementById(id).classList.add('active')
+}
 </script>
 
 </body>
