@@ -3,126 +3,141 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Glass Hardware Simulator</title>
+    <title>Smart Glass AI Simulation</title>
     <style>
-        body { margin: 0; background: #111; color: #0f0; font-family: 'Courier New', monospace; overflow: hidden; }
-        
-        /* Glass Viewport */
-        #glass-view {
-            width: 100vw; height: 100vh;
-            border: 40px solid #222; box-sizing: border-box;
-            position: relative; background: url('https://images.unsplash.com/photo-1516738901171-8eb4fc13bd20?auto=format&fit=crop&q=80&w=1000') center/cover;
+        body { margin: 0; background: #0a0a0a; color: #00ff00; font-family: 'Courier New', monospace; overflow: hidden; }
+
+        /* Smart Glass Frame Effect */
+        #glass-frame {
+            position: absolute; width: 100vw; height: 100vh;
+            border-left: 100px solid rgba(20,20,20,0.9);
+            border-right: 100px solid rgba(20,20,20,0.9);
+            box-sizing: border-box; display: flex; align-items: center; justify-content: center;
         }
 
-        /* Scan Lines & HUD */
-        #hud-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: repeating-linear-gradient(0deg, rgba(0,255,0,0.05) 0px, rgba(0,255,0,0.05) 1px, transparent 2px);
+        /* The Visual Field (What the camera sees) */
+        #camera-view {
+            width: 80%; height: 80%; border: 2px solid #333;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            position: relative; overflow: hidden;
+        }
+
+        /* Moveable Obstacle */
+        #obstacle {
+            position: absolute; width: 100px; height: 100px;
+            background: #ff0000; border: 3px solid #fff;
+            box-shadow: 0 0 20px rgba(255,0,0,0.8);
+            cursor: grab; display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: bold; color: white; border-radius: 5px;
+            left: 50%; top: 50%;
+        }
+
+        /* Glass HUD Details */
+        #hud-top {
+            position: absolute; top: 20px; left: 20px;
+            padding: 15px; border-left: 4px solid #00ff00; background: rgba(0,20,0,0.5);
+        }
+
+        #aim-finder {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 200px; height: 150px; border: 1px solid rgba(0,255,0,0.3);
             pointer-events: none;
         }
 
-        /* The Draggable Object (Obstacle) */
-        #obstacle {
-            position: absolute; width: 100px; height: 100px;
-            cursor: move; transition: transform 0.1s;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        #obstacle img { width: 100%; filter: drop-shadow(0 0 10px red); }
-
-        /* Scanning Box */
-        #scan-box {
-            position: absolute; border: 2px dashed #0f0;
-            pointer-events: none; display: none;
+        #target-lock {
+            position: absolute; border: 2px solid #00ff00;
+            display: none; transition: 0.1s; pointer-events: none;
         }
 
-        .data-panel {
-            position: absolute; top: 60px; left: 60px;
-            background: rgba(0,40,0,0.7); padding: 20px;
-            border-left: 5px solid #0f0; font-size: 1.2rem;
-        }
+        .alert-box { color: #ff0000; font-weight: bold; margin-top: 10px; animation: blink 1s infinite; display: none; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div id="glass-view">
-    <div id="hud-overlay"></div>
+<div id="glass-frame">
+    <div id="camera-view">
+        <div id="aim-finder"></div> <div id="hud-top">
+            <div>MODE: VISION ASSIST</div>
+            <div id="obj-name">SCANNING...</div>
+            <div id="distance">DIST: -- m</div>
+            <div id="warning" class="alert-box">⚠️ CAUTION: OBJECT NEAR</div>
+        </div>
 
-    <div class="data-panel">
-        <div>STATUS: SCANNING...</div>
-        <div id="target">TARGET: NONE</div>
-        <div id="dist">DISTANCE: -- m</div>
-        <div id="alert" style="color: red; font-weight: bold;"></div>
+        <div id="obstacle">OBSTACLE</div>
+        <div id="target-lock"></div>
     </div>
-
-    <div id="obstacle">
-        <img src="https://cdn-icons-png.flaticon.com/512/564/564619.png" id="obj-img">
-        <span style="background:red; color:white; padding:2px 5px; font-size:10px;">OBSTACLE</span>
-    </div>
-
-    <div id="scan-box"></div>
 </div>
 
 <script>
     const obstacle = document.getElementById('obstacle');
-    const scanBox = document.getElementById('scan-box');
-    const targetText = document.getElementById('target');
-    const distText = document.getElementById('dist');
-    const alertText = document.getElementById('alert');
+    const lock = document.getElementById('target-lock');
+    const distText = document.getElementById('distance');
+    const warning = document.getElementById('warning');
+    const objName = document.getElementById('obj-name');
 
-    let isDragging = false;
-    let size = 100; // Base size for distance simulation
+    let isMoving = false;
+    let size = 100;
 
-    // 1. Move Object with Mouse
-    document.addEventListener('mousedown', () => isDragging = true);
-    document.addEventListener('mouseup', () => isDragging = false);
+    // Mouse Controls
+    obstacle.addEventListener('mousedown', () => isMoving = true);
+    document.addEventListener('mouseup', () => isMoving = false);
     
     document.addEventListener('mousemove', (e) => {
-        if(isDragging) {
-            obstacle.style.left = (e.clientX - size/2) + 'px';
-            obstacle.style.top = (e.clientY - size/2) + 'px';
-            updateDetection(e.clientX, e.clientY);
+        if(isMoving) {
+            obstacle.style.left = (e.clientX - size/2 - 100) + 'px';
+            obstacle.style.top = (e.clientY - size/2 - 50) + 'px';
+            runAILogic();
         }
     });
 
-    // 2. Simulate Distance with Mouse Wheel
+    // Distance Simulation (Scroll)
     document.addEventListener('wheel', (e) => {
-        size += e.deltaY * -0.1;
-        size = Math.min(Math.max(50, size), 400); // Limit size
+        size += e.deltaY * -0.2;
+        size = Math.min(Math.max(40, size), 350);
         obstacle.style.width = size + 'px';
         obstacle.style.height = size + 'px';
-        updateDetection();
+        runAILogic();
     });
 
-    function updateDetection() {
+    function runAILogic() {
         const rect = obstacle.getBoundingClientRect();
-        
-        // Show Scan Box
-        scanBox.style.display = 'block';
-        scanBox.style.left = (rect.left - 10) + 'px';
-        scanBox.style.top = (rect.top - 10) + 'px';
-        scanBox.style.width = (rect.width + 20) + 'px';
-        scanBox.style.height = (rect.height + 20) + 'px';
+        const centerView = document.getElementById('aim-finder').getBoundingClientRect();
 
-        // 3. Distance Logic (Virtual)
-        // Perusa iruntha pakkathula, chinna-tha iruntha dhooram
-        const distance = (400 / size).toFixed(1); 
-        
-        targetText.innerText = "TARGET: CHAIR DETECTED";
-        distText.innerText = `DISTANCE: ${distance} m`;
+        // Check if object is inside sensor area
+        if (rect.left < centerView.right && rect.right > centerView.left &&
+            rect.top < centerView.bottom && rect.bottom > centerView.top) {
+            
+            lock.style.display = 'block';
+            lock.style.left = (rect.left - 110) + 'px'; // Offset adjustments
+            lock.style.top = (rect.top - 60) + 'px';
+            lock.style.width = rect.width + 'px';
+            lock.style.height = rect.height + 'px';
 
-        if(distance < 1.5) {
-            alertText.innerText = "WARNING: IMPACT IMMINENT!";
-            playAlertSound();
+            // Calculate Distance
+            const dist = (300 / size).toFixed(1);
+            distText.innerText = `DIST: ${dist} m`;
+            objName.innerText = "OBJECT: CHAIR";
+
+            if(dist < 1.0) {
+                warning.style.display = 'block';
+                speakOnce(`Alert! Object at ${dist} meters.`);
+            } else {
+                warning.style.display = 'none';
+            }
         } else {
-            alertText.innerText = "";
+            lock.style.display = 'none';
+            distText.innerText = "DIST: -- m";
+            objName.innerText = "SCANNING...";
         }
     }
 
-    function playAlertSound() {
-        // Simple beep logic
-        if(!window.speechSynthesis.speaking) {
-            const msg = new SpeechSynthesisUtterance("Obstacle ahead. 1 meter.");
-            window.speechSynthesis.speak(msg);
+    let lastTime = 0;
+    function speakOnce(msg) {
+        if(Date.now() - lastTime > 3000) {
+            const utter = new SpeechSynthesisUtterance(msg);
+            window.speechSynthesis.speak(utter);
+            lastTime = Date.now();
         }
     }
 </script>
