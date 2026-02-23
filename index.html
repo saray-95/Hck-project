@@ -27,13 +27,14 @@
         }
 
         body {
-            background-color: var(--bg-deep);
+            background-color: #000;
             color: var(--text-main);
             font-family: 'Outfit', sans-serif;
             height: 100vh;
+            margin: 0;
             overflow: hidden;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
         }
 
         /* Splash Screen */
@@ -92,12 +93,26 @@
 
         /* Main Layout */
         #app {
-            flex: 1;
+            width: 100%;
+            max-width: 450px;
+            height: 100%;
+            background: var(--bg-deep);
             display: flex;
             flex-direction: column;
-            padding: 20px;
+            padding: 24px;
             opacity: 0;
             transition: opacity 0.5s ease;
+            position: relative;
+            border-left: 1px solid var(--card-border);
+            border-right: 1px solid var(--card-border);
+        }
+
+        @media (max-width: 480px) {
+            #app {
+                max-width: 100%;
+                border: none;
+                padding: 20px;
+            }
         }
 
         .header {
@@ -151,8 +166,8 @@
         .dashboard-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
+            gap: 12px;
+            margin-top: 15px;
         }
 
         .card {
@@ -545,11 +560,12 @@
 
         /* Control Bar */
         .control-bar {
-            height: 100px;
+            height: 110px;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding-bottom: 20px;
+            padding-bottom: 30px;
+            flex-shrink: 0;
         }
 
         .mic-button {
